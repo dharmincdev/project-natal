@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌳 Project Natal
 
-## Getting Started
+> **Next-Generation Family Tree Builder** — Beautifully visualize, explore, and share family legacies with AI, interactive 3D spatial orbit, world migration maps, and instant reunion QR code sharing.
 
-First, run the development server:
+---
+
+## ✨ Features
+
+- **Overlap-Free Kinship Graph Engine:** Custom hierarchical layout algorithm with biological sibling clustering, sibling facing rules, lateral paternal vs. maternal wings, and orthogonal jump bridges.
+- **4 Interactive Visualization Modes:**
+  - **Flat 2D Canvas:** Infinite pan/zoom canvas powered by React Flow with custom person cards and marriage union hubs.
+  - **3D Generational Orbit:** Interactive Three.js spatial galaxy model organizing generations into orbital rings.
+  - **Interactive Family Timeline:** Chronological milestone stream with living age calculations and event filters.
+  - **3D World Globe & Migration:** Interactive 3D globe charting ancestral birthplaces and migration journeys.
+- **GEDCOM 7.0 & 5.5.1 Interoperability:** 1-click import and export of standard `.ged` genealogical files with live pre-import relationship metrics.
+- **AI Family Historian:** Grounded AI agent that answers lineage questions, identifies oldest/youngest ancestors, and highlights birthdays without hallucinations.
+- **Reunion & Event Sharing:** Instant smartphone QR code generation for reunion table tents, printable PDF posters, and 300 DPI PNG/SVG vector exports.
+- **Cloud Backend & Privacy:** Supabase PostgreSQL database with strict Row-Level Security (RLS) policies, passwordless email magic link sign-in, and Google OAuth.
+- **End-to-End Automated Testing:** Automated Playwright browser test suite covering core canvas, navigation, and file import workflows.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js](https://nextjs.org/) (App Router, React 19)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/)
+- **Graph & 3D Visualization:** [@xyflow/react](https://reactflow.dev/), [Three.js](https://threejs.org/)
+- **Backend & Authentication:** [Supabase](https://supabase.com/) (PostgreSQL, Row Level Security, Auth)
+- **Interchange Standard:** Lineage-Linked GEDCOM 7.0 / 5.5.1
+- **Testing:** [Playwright](https://playwright.dev/)
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone & Install Dependencies
+
+```bash
+git clone https://github.com/dharmincdev/project-natal.git
+cd project-natal
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in your Supabase project credentials:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 3. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) (or `http://localhost:3001` if port 3000 is occupied).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Run Automated E2E Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run test:e2e
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private / Proprietary. All rights reserved.
