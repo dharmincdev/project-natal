@@ -75,7 +75,7 @@ export default function TreeSwitcher({
         aria-expanded={isOpen}
       >
         <span className="text-base leading-none shrink-0">{currentTree.emoji}</span>
-        <span className="truncate max-w-[90px] xs:max-w-[120px] sm:max-w-[180px]">
+        <span className="truncate max-w-[100px] sm:max-w-[125px] xl:max-w-[170px]">
           {currentTree.name}
         </span>
         <ChevronDown

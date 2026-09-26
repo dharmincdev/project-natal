@@ -38,7 +38,7 @@ export default function UserNav() {
             variant="outline"
             size="sm"
             onClick={() => setIsAuthModalOpen(true)}
-            className="text-xs h-8 px-2.5 sm:px-3 font-semibold gap-1.5 shadow-2xs"
+            className="text-xs h-8 px-2 sm:px-2.5 font-semibold gap-1.5 shadow-2xs"
             title="Sign in to save trees to the cloud"
           >
             <UserIcon className="w-3.5 h-3.5 text-primary" />

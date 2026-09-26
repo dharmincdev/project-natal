@@ -26,7 +26,7 @@ export default function ViewModeSwitcher({
     <div className="flex items-center rounded-lg border bg-muted/50 p-0.5 text-xs shadow-2xs">
       <button
         onClick={() => handleModeClick('flat')}
-        className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
           currentMode === 'flat'
             ? 'bg-background shadow-xs text-foreground font-semibold'
             : 'text-muted-foreground hover:text-foreground'
@@ -34,12 +34,12 @@ export default function ViewModeSwitcher({
         title="2D Hierarchical Tree View"
       >
         <span>🗺️</span>
-        <span className="hidden xs:inline">Flat</span>
+        <span>Flat</span>
       </button>
 
       <button
         onClick={() => handleModeClick('3d')}
-        className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
           currentMode === '3d'
             ? 'bg-background shadow-xs text-primary font-semibold'
             : 'text-muted-foreground hover:text-foreground'
@@ -47,12 +47,12 @@ export default function ViewModeSwitcher({
         title="3D Orbital Constellation View"
       >
         <span>🪐</span>
-        <span>3D<span className="hidden xs:inline">&nbsp;Orbit</span></span>
+        <span>3D</span>
       </button>
 
       <button
         onClick={() => handleModeClick('timeline')}
-        className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
           currentMode === 'timeline'
             ? 'bg-background shadow-xs text-amber-600 dark:text-amber-400 font-semibold'
             : 'text-muted-foreground hover:text-foreground'
@@ -60,12 +60,12 @@ export default function ViewModeSwitcher({
         title="Chronological Timeline View"
       >
         <span>⏳</span>
-        <span><span className="hidden xs:inline">Time</span>line</span>
+        <span>Timeline</span>
       </button>
 
       <button
         onClick={() => handleModeClick('world')}
-        className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
           currentMode === 'world'
             ? 'bg-background shadow-xs text-emerald-600 dark:text-emerald-400 font-semibold'
             : 'text-muted-foreground hover:text-foreground'
@@ -73,7 +73,7 @@ export default function ViewModeSwitcher({
         title="Interactive 3D World Globe & Migration View"
       >
         <span>🌍</span>
-        <span>Globe<span className="hidden xs:inline">&nbsp;&amp; Map</span></span>
+        <span>Globe</span>
       </button>
     </div>
   );

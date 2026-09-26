@@ -126,8 +126,13 @@ export default function TreeTimeline({
       {/* Top Filter & Time-Traveler Control Bar */}
       <div className="flex-none p-3 sm:p-4 border-b bg-card space-y-2.5 z-10">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-          {/* Sub-view switcher: Stream vs Tracks */}
-          <div className="flex items-center gap-1.5 self-start">
+          <div className="flex items-center gap-2.5 self-start">
+            <h2 className="text-xs font-bold text-foreground flex items-center gap-1.5 shrink-0">
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+              <span>Family Timeline</span>
+            </h2>
+            <div className="h-4 w-px bg-border shrink-0" />
+            {/* Sub-view switcher: Stream vs Tracks */}
             <div className="flex items-center rounded-lg border bg-muted/50 p-0.5 text-xs">
               <button
                 onClick={() => setSubView('stream')}
