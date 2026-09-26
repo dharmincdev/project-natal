@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTier } from '@/context/TierContext';
+import { useAuth } from '@/context/AuthContext';
 import { UserTier } from '@/types/tree';
 import {
   Dialog,
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, Sparkles, Zap, Crown, AlertCircle } from 'lucide-react';
+import { Check, Sparkles, Zap, Crown, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function UpgradeModal() {
   const {
@@ -23,10 +24,49 @@ export default function UpgradeModal() {
     highlightedTier,
     upgradeReason,
   } = useTier();
+  const { user } = useAuth();
+  const [loadingTier, setLoadingTier] = useState<UserTier | null>(null);
 
-  const handleSelectTier = (selectedTier: UserTier) => {
-    setTier(selectedTier);
-    closeUpgradeModal();
+  const handleSelectTier = async (selectedTier: UserTier) => {
+    if (selectedTier === 'free') {
+      setTier('free');
+      closeUpgradeModal();
+      return;
+    }
+
+    setLoadingTier(selectedTier);
+
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetTier: selectedTier,
+          userId: user?.id,
+          userEmail: user?.email,
+          successUrl: `${window.location.origin}/dashboard?upgrade_success=true&tier=${selectedTier}`,
+          cancelUrl: `${window.location.origin}/dashboard?upgrade_canceled=true`,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        // Redirect to real Stripe Hosted Checkout
+        window.location.href = data.url;
+      } else {
+        // Fallback: simulated mode or direct local tier upgrade
+        setTier(selectedTier);
+        closeUpgradeModal();
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      // Fallback to local switch so user is never blocked
+      setTier(selectedTier);
+      closeUpgradeModal();
+    } finally {
+      setLoadingTier(null);
+    }
   };
 
   const tiers = [
@@ -184,15 +224,20 @@ export default function UpgradeModal() {
                         ? 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-sm'
                         : ''
                     }`}
-                    disabled={isCurrent}
+                    disabled={isCurrent || loadingTier !== null}
                   >
                     {isCurrent ? (
                       'Current Plan'
+                    ) : loadingTier === t.id ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                        Redirecting to Checkout...
+                      </>
                     ) : (
                       <>
                         {t.id === 'pro' && <Sparkles className="w-3.5 h-3.5 mr-1" />}
                         {t.id === 'onetime' && <Zap className="w-3.5 h-3.5 mr-1" />}
-                        Switch to {t.name} (Demo)
+                        Get {t.name} ({t.price})
                       </>
                     )}
                   </Button>
