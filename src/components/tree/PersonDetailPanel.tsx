@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Person, TreeData, RelationshipType, RelationshipSubtype, Gender } from '@/types/tree';
+import { Person, TreeData, RelationshipType, RelationshipSubtype, Gender, VaultAttachment } from '@/types/tree';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { getParents, getSpouses, getChildren, getSiblings } from '@/lib/tree-utils';
-import { UserPlus, Heart, Users, Trash2, Calendar, MapPin, Briefcase } from 'lucide-react';
+import { UserPlus, Heart, Users, Trash2, Calendar, MapPin, Briefcase, Archive } from 'lucide-react';
 import CityCombobox from './CityCombobox';
+import PersonVaultSection from './PersonVaultSection';
 
 type PersonDetailPanelProps = {
   person: Person | null;
@@ -66,6 +67,26 @@ export default function PersonDetailPanel({
       deathDate: isDeceased && formData.deathDate ? formData.deathDate : null,
     });
     onClose();
+  };
+
+  const handleAddAttachment = (attachment: VaultAttachment) => {
+    const current = formData.attachments || person.attachments || [];
+    const updated = [...current, attachment];
+    setFormData(prev => ({ ...prev, attachments: updated }));
+    onSave({
+      ...formData,
+      attachments: updated,
+    });
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    const current = formData.attachments || person.attachments || [];
+    const updated = current.filter(a => a.id !== attachmentId);
+    setFormData(prev => ({ ...prev, attachments: updated }));
+    onSave({
+      ...formData,
+      attachments: updated,
+    });
   };
 
   // Relative computations
@@ -686,6 +707,15 @@ export default function PersonDetailPanel({
               </div>
             </div>
           )}
+
+          {/* Memories & Document Vault */}
+          <PersonVaultSection
+            personName={`${person.firstName} ${person.lastName}`}
+            attachments={formData.attachments || person.attachments || []}
+            onAddAttachment={handleAddAttachment}
+            onRemoveAttachment={handleRemoveAttachment}
+            isEditable={isEditable}
+          />
         </div>
       </SheetContent>
     </Sheet>

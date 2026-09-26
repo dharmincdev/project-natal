@@ -19,6 +19,21 @@ export type Milestone = {
 
 export type Gender = 'male' | 'female' | 'other' | 'unknown';
 
+export type VaultAttachmentType = 'audio' | 'document' | 'certificate' | 'photo_archive';
+
+export type VaultAttachment = {
+  id: string;
+  type: VaultAttachmentType;
+  title: string;
+  description?: string;
+  url: string;
+  fileName?: string;
+  fileSize?: number;
+  durationSeconds?: number;
+  recordedAt?: string;
+  uploadedAt: string;
+};
+
 export type Person = {
   id: string;
   treeId: string;
@@ -34,6 +49,7 @@ export type Person = {
   bio: string | null;
   customFields: Record<string, string>;
   milestones: Milestone[];
+  attachments?: VaultAttachment[];
   positionX: number;
   positionY: number;
   createdAt: string;

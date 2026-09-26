@@ -1,4 +1,4 @@
-import { Person, Relationship, TreeData } from '@/types/tree';
+import { Person, Relationship, TreeData, VaultAttachment } from '@/types/tree';
 
 export function loadSmithFamily(treeId: string): { 
   people: Omit<Person, 'id' | 'createdAt' | 'updatedAt'>[], 
@@ -18,15 +18,70 @@ export function loadSmithFamily(treeId: string): {
     positionY: number,
     photoUrl: string | null = null,
     maidenName: string | null = null,
-    gender: 'male' | 'female' | 'other' | null = null
+    gender: 'male' | 'female' | 'other' | null = null,
+    attachments: VaultAttachment[] = []
   ): Omit<Person, 'id' | 'createdAt' | 'updatedAt'> => ({
-    treeId, firstName, lastName, maidenName, nickname, gender, birthDate, deathDate: null, birthPlace, photoUrl, bio, customFields, milestones, positionX, positionY
+    treeId, firstName, lastName, maidenName, nickname, gender, birthDate, deathDate: null, birthPlace, photoUrl, bio, customFields, milestones, attachments, positionX, positionY
   });
 
   // Curated realistic portrait photos for all family members
   const people = [
-    p(treeId, 'Robert', 'Smith', 'Bob', '1945-05-12', 'Chicago, IL', 'Patriarch of the Smith family. Worked as a civil engineer for 40 years.', { occupation: 'Civil Engineer', hobbies: 'Fishing, Woodworking' }, [{ id: 'm1', type: 'retirement', date: '2010-06-01', description: 'Retired from civil engineering', submittedBy: 'admin' }], 0, 0, 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80', null, 'male'),
-    p(treeId, 'Margaret', 'Smith', 'Peggy', '1948-08-22', 'Boston, MA', 'Matriarch of the family. Loved gardening and baking.', { occupation: 'Teacher', hobbies: 'Gardening, Baking' }, [], 1, 0, 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80', 'Johnson', 'female'),
+    p(
+      treeId,
+      'Robert',
+      'Smith',
+      'Bob',
+      '1945-05-12',
+      'Chicago, IL',
+      'Patriarch of the Smith family. Worked as a civil engineer for 40 years.',
+      { occupation: 'Civil Engineer', hobbies: 'Fishing, Woodworking' },
+      [{ id: 'm1', type: 'retirement', date: '2010-06-01', description: 'Retired from civil engineering', submittedBy: 'admin' }],
+      0,
+      0,
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+      null,
+      'male',
+      [
+        {
+          id: 'att-rob-audio',
+          type: 'audio',
+          title: "Grandpa Robert's Memories of Chicago (1968)",
+          description: "High school oral history interview recorded with granddaughter Emily.",
+          url: "data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRAAAACAgICAgICAgICAgICAgICA",
+          durationSeconds: 42,
+          recordedAt: '2019-11-28T16:00:00.000Z',
+          uploadedAt: '2019-11-28T16:30:00.000Z',
+        },
+      ]
+    ),
+    p(
+      treeId,
+      'Margaret',
+      'Smith',
+      'Peggy',
+      '1948-08-22',
+      'Boston, MA',
+      'Matriarch of the family. Loved gardening and baking.',
+      { occupation: 'Teacher', hobbies: 'Gardening, Baking' },
+      [],
+      1,
+      0,
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
+      'Johnson',
+      'female',
+      [
+        {
+          id: 'att-peg-cert',
+          type: 'certificate',
+          title: 'Commonwealth Teaching Certificate (1970)',
+          description: 'Massachusetts Department of Education certification.',
+          url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
+          fileName: 'massachusetts_teaching_license_1970.pdf',
+          fileSize: 342000,
+          uploadedAt: '2020-03-12T10:15:00.000Z',
+        },
+      ]
+    ),
     p(treeId, 'James', 'Smith', 'Jim', '1970-03-15', 'Chicago, IL', 'Eldest son. Followed his father into engineering.', { occupation: 'Software Engineer' }, [], -1, 1, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80', null, 'male'),
     p(treeId, 'Linda', 'Smith', null, '1972-11-05', 'Seattle, WA', null, { occupation: 'Architect' }, [], -2, 1, 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80', 'Davis', 'female'),
     p(treeId, 'Sarah', 'Smith-Williams', null, '1974-07-30', 'Chicago, IL', null, { occupation: 'Doctor' }, [], 1, 1, 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80', null, 'female'),

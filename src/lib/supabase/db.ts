@@ -42,6 +42,7 @@ export type PersonRow = {
   bio: string | null;
   custom_fields: Record<string, string>;
   milestones: any[];
+  attachments?: any[];
   position_x: number;
   position_y: number;
   created_at: string;
@@ -90,6 +91,7 @@ export function rowToPerson(row: PersonRow): Person {
     bio: row.bio,
     customFields: row.custom_fields || {},
     milestones: row.milestones || [],
+    attachments: row.attachments || [],
     positionX: row.position_x || 0,
     positionY: row.position_y || 0,
     createdAt: row.created_at,
@@ -228,6 +230,7 @@ export async function saveTreeDataToSupabase(treeData: TreeData, userId: string)
       bio: p.bio || null,
       custom_fields: p.customFields || {},
       milestones: p.milestones || [],
+      attachments: p.attachments || [],
       position_x: p.positionX || 0,
       position_y: p.positionY || 0,
       created_at: p.createdAt || now,

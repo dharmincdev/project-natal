@@ -90,5 +90,44 @@ test.describe('Interactive Demo Tree Canvas', () => {
     await expect(page.getByText('uncle.charlie@smithfamily.com', { exact: true })).toBeVisible();
     await expect(page.getByText(/Pending/i).first()).toBeVisible();
   });
+
+  test('should open PersonDetailPanel and display Vault with audio memories and record new story', async ({ page }) => {
+    await page.goto('/demo');
+    await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
+
+    // Click on Robert Smith node to open PersonDetailPanel
+    await page.getByText('Robert Smith').first().click();
+
+    // Verify PersonDetailPanel sheet opens
+    await expect(page.getByRole('heading', { name: /Robert Smith/i })).toBeVisible({ timeout: 5000 });
+
+    // Scroll to and verify Memories & Document Vault section
+    await expect(page.getByText(/Memories & Document Vault/i)).toBeVisible();
+    await expect(page.getByText("Grandpa Robert's Memories of Chicago (1968)")).toBeVisible();
+
+    // Click Record button in Vault
+    const recordBtn = page.getByRole('button', { name: /Record/i });
+    await expect(recordBtn).toBeVisible();
+    await recordBtn.click();
+
+    // Verify recording UI
+    await expect(page.getByText(/Record Oral History/i)).toBeVisible();
+
+    // Click Simulate Voice
+    const simulateBtn = page.getByRole('button', { name: /Simulate Voice/i });
+    await expect(simulateBtn).toBeVisible();
+    await simulateBtn.click();
+
+    // Wait for review state
+    await expect(page.getByText(/Recorded Audio Clip/i)).toBeVisible({ timeout: 10000 });
+
+    // Click Save Voice Memory
+    const saveBtn = page.getByRole('button', { name: /Save Voice Memory/i });
+    await expect(saveBtn).toBeVisible();
+    await saveBtn.click();
+
+    // Verify new voice memory is listed in vault
+    await expect(page.getByText(/Voice Memory of Robert Smith/i)).toBeVisible();
+  });
 });
 
