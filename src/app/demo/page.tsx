@@ -21,7 +21,8 @@ import SpotlightSearch from '@/components/tree/SpotlightSearch';
 import CreateTreeDialog from '@/components/tree/CreateTreeDialog';
 import ExportTreeModal from '@/components/tree/ExportTreeModal';
 import ImportGedcomDialog from '@/components/tree/ImportGedcomDialog';
-import { getTreeData, saveTreeData, resetStoredTree } from '@/lib/storage';
+import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
+import { getTreeData, saveTreeData, resetStoredTree, getStoredCollaborators } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTier } from '@/context/TierContext';
@@ -83,6 +84,8 @@ function DemoPageContent() {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isImportGedcomOpen, setIsImportGedcomOpen] = useState(false);
+  const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
+  const [collaboratorCount, setCollaboratorCount] = useState<number>(() => getStoredCollaborators(treeParam).length);
   const [isCreateTreeOpen, setIsCreateTreeOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
@@ -100,6 +103,7 @@ function DemoPageContent() {
     if (treeParam && treeParam !== currentTreeSlug) {
       setCurrentTreeSlug(treeParam);
       setTreeData(getTreeData(treeParam));
+      setCollaboratorCount(getStoredCollaborators(treeParam).length);
       setSelectedPerson(null);
       setIsPanelOpen(false);
     }
@@ -580,6 +584,23 @@ function DemoPageContent() {
             <span className="hidden sm:inline ml-1">Share</span>
           </Button>
 
+          {/* Collaborate Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCollaboratorsOpen(true)}
+            className="text-xs h-8 px-2 sm:px-3 hidden lg:inline-flex gap-1"
+            title="Manage tree collaborators and permissions"
+          >
+            <Users className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Collaborate</span>
+            {collaboratorCount > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 min-w-4 flex items-center justify-center font-bold ml-0.5">
+                {collaboratorCount}
+              </Badge>
+            )}
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -753,6 +774,16 @@ function DemoPageContent() {
         isOpen={isCreateTreeOpen}
         onClose={() => setIsCreateTreeOpen(false)}
         onTreeCreated={handleTreeCreated}
+      />
+
+      {/* Tree Collaborators & Permissions Modal */}
+      <CollaboratorsModal
+        isOpen={isCollaboratorsOpen}
+        onClose={() => setIsCollaboratorsOpen(false)}
+        tree={treeData.tree}
+        onCollaboratorChange={() => {
+          setCollaboratorCount(getStoredCollaborators(currentTreeSlug).length);
+        }}
       />
 
       <ChatPanel

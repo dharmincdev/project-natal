@@ -8,6 +8,7 @@ import TreeCanvas from '@/components/tree/TreeCanvas';
 import PersonDetailPanel from '@/components/tree/PersonDetailPanel';
 import QrCodeModal from '@/components/shared/QrCodeModal';
 import ChatPanel from '@/components/chat/ChatPanel';
+import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
 import MobilePersonPreview from '@/components/tree/MobilePersonPreview';
 import ViewModeSwitcher, { ViewMode } from '@/components/tree/ViewModeSwitcher';
 import TreeTimeline from '@/components/tree/TreeTimeline';
@@ -51,6 +52,7 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
   const [highlightedPersonId, setHighlightedPersonId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -134,6 +136,17 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
           >
             <QrCode className="w-3.5 h-3.5 text-primary" />
             <span className="hidden sm:inline ml-1.5">QR</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCollaboratorsOpen(true)}
+            className="h-8 px-2 sm:px-3 text-xs gap-1"
+            title="View tree collaborators"
+          >
+            <Users className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden sm:inline ml-0.5">Collaborators</span>
           </Button>
           
           {hasFeature('aiChat') ? (
@@ -220,6 +233,12 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
         onClose={() => setIsQrModalOpen(false)} 
         treeName={initialTreeData.tree.name} 
         slug={initialTreeData.tree.slug} 
+      />
+
+      <CollaboratorsModal
+        isOpen={isCollaboratorsOpen}
+        onClose={() => setIsCollaboratorsOpen(false)}
+        tree={initialTreeData.tree}
       />
 
       <ChatPanel

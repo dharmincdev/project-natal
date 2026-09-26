@@ -1,7 +1,7 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
-import { FamilyTree, Person, Relationship, TreeData } from '@/types/tree';
+import { FamilyTree, Person, Relationship, TreeData, TreeCollaborator, CollaboratorRole } from '@/types/tree';
 import { getInitialSmithTreeData } from '@/data/fixtures/smith-family';
 import { getInitialRiveraChenTreeData } from '@/data/fixtures/rivera-chen';
 import { getInitialHouseTargaryenTreeData } from '@/data/fixtures/house-targaryen';
@@ -10,6 +10,7 @@ import { saveTreeDataToSupabase } from '@/lib/supabase/db';
 
 const CUSTOM_TREES_KEY = 'project_natal_custom_trees_v1';
 const TREE_DATA_PREFIX = 'project_natal_tree_data_v1_';
+const COLLABORATORS_PREFIX = 'project_natal_collabs_v1_';
 
 export type TreeSummary = {
   id: string;
@@ -18,6 +19,7 @@ export type TreeSummary = {
   description: string | null;
   memberCount: number;
   connectionCount: number;
+  collaboratorCount: number;
   updatedAt: string;
   isCustom: boolean;
   emoji: string;
@@ -86,6 +88,7 @@ export function getAllTreeSummaries(): TreeSummary[] {
         const customTrees: FamilyTree[] = JSON.parse(rawCustom);
         for (const t of customTrees) {
           const treeData = getTreeData(t.id);
+          const collabs = getStoredCollaborators(t.id);
           result.push({
             id: t.id,
             slug: t.slug,
@@ -93,6 +96,7 @@ export function getAllTreeSummaries(): TreeSummary[] {
             description: t.description,
             memberCount: treeData ? treeData.people.length : 1,
             connectionCount: treeData ? treeData.relationships.length : 0,
+            collaboratorCount: collabs.length,
             updatedAt: t.updatedAt,
             isCustom: true,
             emoji: '🏡',
@@ -108,6 +112,7 @@ export function getAllTreeSummaries(): TreeSummary[] {
   // 2. Add built-in sample trees
   for (const sample of SAMPLE_TREES) {
     const data = getTreeData(sample.slug);
+    const collabs = getStoredCollaborators(sample.slug);
     result.push({
       id: data.tree.id,
       slug: sample.slug,
@@ -115,6 +120,7 @@ export function getAllTreeSummaries(): TreeSummary[] {
       description: sample.description,
       memberCount: data.people.length,
       connectionCount: data.relationships.length,
+      collaboratorCount: collabs.length,
       updatedAt: data.tree.updatedAt,
       isCustom: false,
       emoji: sample.emoji,
@@ -350,4 +356,110 @@ export function importGedcomTree(importedData: TreeData): TreeData {
 
   saveTreeData(importedData);
   return importedData;
+}
+
+// Default initial sample collaborators
+const DEFAULT_SMITH_COLLABORATORS: TreeCollaborator[] = [
+  {
+    id: 'collab-1',
+    treeId: 'smith-family',
+    userId: null,
+    email: 'margaret.smith@familyarchive.org',
+    role: 'admin',
+    status: 'accepted',
+    invitedBy: 'demo-user',
+    invitedByName: 'Robert Smith',
+    createdAt: '2026-01-15T10:00:00.000Z',
+  },
+  {
+    id: 'collab-2',
+    treeId: 'smith-family',
+    userId: null,
+    email: 'james.smith@ancestry-club.net',
+    role: 'editor',
+    status: 'accepted',
+    invitedBy: 'demo-user',
+    invitedByName: 'Robert Smith',
+    createdAt: '2026-02-01T14:30:00.000Z',
+  },
+];
+
+/**
+ * Retrieves the list of collaborators for a specific tree.
+ */
+export function getStoredCollaborators(treeIdOrSlug: string): TreeCollaborator[] {
+  if (!isClient()) {
+    if (treeIdOrSlug === 'smith-family') return DEFAULT_SMITH_COLLABORATORS;
+    return [];
+  }
+
+  try {
+    const raw = localStorage.getItem(`${COLLABORATORS_PREFIX}${treeIdOrSlug}`);
+    if (raw) {
+      return JSON.parse(raw) as TreeCollaborator[];
+    }
+  } catch (e) {
+    console.error('Error reading collaborators from localStorage:', e);
+  }
+
+  // Pre-seed fixture data for Smith family
+  if (treeIdOrSlug === 'smith-family') {
+    saveStoredCollaborators(treeIdOrSlug, DEFAULT_SMITH_COLLABORATORS);
+    return DEFAULT_SMITH_COLLABORATORS;
+  }
+
+  return [];
+}
+
+/**
+ * Saves the collaborator list for a tree in localStorage.
+ */
+export function saveStoredCollaborators(treeIdOrSlug: string, collaborators: TreeCollaborator[]): void {
+  if (!isClient()) return;
+  try {
+    localStorage.setItem(`${COLLABORATORS_PREFIX}${treeIdOrSlug}`, JSON.stringify(collaborators));
+  } catch (e) {
+    console.error('Error saving collaborators to localStorage:', e);
+  }
+}
+
+/**
+ * Adds an invited collaborator to the specified tree.
+ */
+export function addStoredCollaborator(
+  treeIdOrSlug: string,
+  collaborator: Omit<TreeCollaborator, 'id' | 'createdAt'>
+): TreeCollaborator {
+  const current = getStoredCollaborators(treeIdOrSlug);
+  const newCollab: TreeCollaborator = {
+    ...collaborator,
+    id: `collab-${uuidv4().substring(0, 8)}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  const updated = [...current, newCollab];
+  saveStoredCollaborators(treeIdOrSlug, updated);
+  return newCollab;
+}
+
+/**
+ * Updates a collaborator's role.
+ */
+export function updateStoredCollaboratorRole(
+  treeIdOrSlug: string,
+  collaboratorId: string,
+  newRole: CollaboratorRole
+): void {
+  const current = getStoredCollaborators(treeIdOrSlug);
+  const updated = current.map((c) => (c.id === collaboratorId ? { ...c, role: newRole, updatedAt: new Date().toISOString() } : c));
+  saveStoredCollaborators(treeIdOrSlug, updated);
+}
+
+/**
+ * Removes a collaborator from the tree.
+ */
+export function removeStoredCollaborator(treeIdOrSlug: string, collaboratorId: string): void {
+  const current = getStoredCollaborators(treeIdOrSlug);
+  const filtered = current.filter((c) => c.id !== collaboratorId);
+  saveStoredCollaborators(treeIdOrSlug, filtered);
 }

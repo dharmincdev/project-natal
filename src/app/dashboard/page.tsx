@@ -9,6 +9,7 @@ import { TreeData } from '@/types/tree';
 import CreateTreeDialog from '@/components/tree/CreateTreeDialog';
 import QrCodeModal from '@/components/shared/QrCodeModal';
 import ExportTreeModal from '@/components/tree/ExportTreeModal';
+import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
 import ThemeToggle from '@/components/shared/ThemeToggle';
 import UserNav from '@/components/shared/UserNav';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
   Download, 
   Sparkles, 
   Users, 
+  UserPlus,
   Calendar, 
   ArrowRight,
   Search,
@@ -35,10 +37,11 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   
-  // Modals for share & export
+  // Modals for share, export, & collaborate
   const [activeModalTree, setActiveModalTree] = useState<TreeData | null>(null);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isCollaboratorsOpen, setIsCollaboratorsOpen] = useState(false);
 
   const refreshTrees = () => {
     setTrees(getAllTreeSummaries());
@@ -71,6 +74,12 @@ export default function DashboardPage() {
     const data = getTreeData(tree.slug);
     setActiveModalTree(data);
     setIsExportOpen(true);
+  };
+
+  const handleOpenCollaborate = (tree: TreeSummary) => {
+    const data = getTreeData(tree.slug);
+    setActiveModalTree(data);
+    setIsCollaboratorsOpen(true);
   };
 
   const customTrees = trees.filter(
@@ -211,7 +220,7 @@ export default function DashboardPage() {
                       </p>
                     )}
 
-                    <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground border-t">
+                    <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground border-t flex-wrap">
                       <div className="flex items-center gap-1">
                         <Users className="w-3.5 h-3.5 text-primary/70" />
                         <span className="font-semibold text-foreground">{tree.memberCount}</span> members
@@ -220,11 +229,17 @@ export default function DashboardPage() {
                         <Network className="w-3.5 h-3.5 text-primary/70" />
                         <span className="font-semibold text-foreground">{tree.connectionCount}</span> connections
                       </div>
+                      {tree.collaboratorCount > 0 && (
+                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>{tree.collaboratorCount} contributors</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
 
-                  <div className="px-5 py-3 bg-muted/30 border-t flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1">
+                  <div className="px-5 py-3 bg-muted/30 border-t flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
@@ -234,6 +249,16 @@ export default function DashboardPage() {
                       >
                         <Share2 className="w-3 h-3 text-primary" />
                         <span>Share</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenCollaborate(tree)}
+                        className="h-7 px-2 text-[11px] gap-1"
+                        title="Manage tree collaborators"
+                      >
+                        <Users className="w-3 h-3 text-primary" />
+                        <span>Collaborate</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -290,7 +315,7 @@ export default function DashboardPage() {
                     {tree.description}
                   </p>
 
-                  <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground border-t">
+                  <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground border-t flex-wrap">
                     <div className="flex items-center gap-1">
                       <Users className="w-3.5 h-3.5 text-primary/70" />
                       <span className="font-semibold text-foreground">{tree.memberCount}</span> members
@@ -299,11 +324,17 @@ export default function DashboardPage() {
                       <Network className="w-3.5 h-3.5 text-primary/70" />
                       <span className="font-semibold text-foreground">{tree.connectionCount}</span> connections
                     </div>
+                    {tree.collaboratorCount > 0 && (
+                      <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                        <UserPlus className="w-3.5 h-3.5" />
+                        <span>{tree.collaboratorCount} contributors</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
 
-                <div className="px-5 py-3 bg-muted/30 border-t flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1">
+                <div className="px-5 py-3 bg-muted/30 border-t flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-1 flex-wrap">
                     <Button
                       variant="outline"
                       size="sm"
@@ -313,6 +344,16 @@ export default function DashboardPage() {
                     >
                       <Share2 className="w-3 h-3 text-primary" />
                       <span>Share</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenCollaborate(tree)}
+                      className="h-7 px-2 text-[11px] gap-1"
+                      title="Manage tree collaborators"
+                    >
+                      <Users className="w-3 h-3 text-primary" />
+                      <span>Collaborate</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -362,6 +403,16 @@ export default function DashboardPage() {
           isOpen={isExportOpen}
           onClose={() => setIsExportOpen(false)}
           treeData={activeModalTree}
+        />
+      )}
+
+      {/* Collaborators Modal */}
+      {activeModalTree && (
+        <CollaboratorsModal
+          isOpen={isCollaboratorsOpen}
+          onClose={() => setIsCollaboratorsOpen(false)}
+          tree={activeModalTree.tree}
+          onCollaboratorChange={refreshTrees}
         />
       )}
     </div>

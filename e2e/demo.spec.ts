@@ -62,4 +62,33 @@ test.describe('Interactive Demo Tree Canvas', () => {
     await expect(page.getByRole('button', { name: /SVG Vector/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /PDF \/ Print/i })).toBeVisible();
   });
+
+  test('should open Collaborators modal and display invite controls and active members', async ({ page }) => {
+    await page.goto('/demo');
+    await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
+
+    // Click Collaborate button in header
+    const collabBtn = page.getByRole('button', { name: /Collaborate/i });
+    await expect(collabBtn).toBeVisible();
+    await collabBtn.click();
+
+    // Check modal header and active members
+    await expect(page.getByRole('heading', { name: /Family Tree Collaborators/i })).toBeVisible();
+    await expect(page.getByText(/Active Members & Contributors/i)).toBeVisible();
+    await expect(page.getByText('Tree Creator')).toBeVisible();
+
+    // Invite a new relative
+    const emailInput = page.getByPlaceholder('relative@familyemail.com');
+    await expect(emailInput).toBeVisible();
+    await emailInput.fill('uncle.charlie@smithfamily.com');
+
+    // Click Send Invite
+    const sendInviteBtn = page.getByRole('button', { name: /Send Invite/i });
+    await sendInviteBtn.click();
+
+    // Verify collaborator added with pending status
+    await expect(page.getByText('uncle.charlie@smithfamily.com', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Pending/i).first()).toBeVisible();
+  });
 });
+

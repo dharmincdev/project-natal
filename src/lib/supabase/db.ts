@@ -1,5 +1,5 @@
 import { getSupabaseBrowserClient } from './client';
-import { FamilyTree, Person, Relationship, TreeData } from '@/types/tree';
+import { FamilyTree, Person, Relationship, TreeData, TreeCollaborator, CollaboratorRole, CollaboratorStatus } from '@/types/tree';
 
 // Row types matching Supabase PostgreSQL tables
 export type ProfileRow = {
@@ -266,6 +266,146 @@ export async function saveTreeDataToSupabase(treeData: TreeData, userId: string)
       console.error('Error saving relationships to Supabase:', relError);
       return false;
     }
+  }
+
+  return true;
+}
+
+export type TreeCollaboratorRow = {
+  id: string;
+  tree_id: string;
+  user_id: string | null;
+  email: string;
+  role: string;
+  status: string;
+  invited_by: string;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
+export function rowToTreeCollaborator(row: TreeCollaboratorRow): TreeCollaborator {
+  return {
+    id: row.id,
+    treeId: row.tree_id,
+    userId: row.user_id,
+    email: row.email,
+    role: row.role as CollaboratorRole,
+    status: row.status as CollaboratorStatus,
+    invitedBy: row.invited_by,
+    invitedByName: row.profiles?.name || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * Fetch all collaborators for a family tree from Supabase.
+ */
+export async function fetchTreeCollaboratorsFromSupabase(treeId: string): Promise<TreeCollaborator[]> {
+  const client = getSupabaseBrowserClient();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from('tree_collaborators')
+    .select(`
+      *,
+      profiles:user_id (name, avatar_url)
+    `)
+    .eq('tree_id', treeId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching tree collaborators from Supabase:', error);
+    return [];
+  }
+
+  return (data as TreeCollaboratorRow[]).map(rowToTreeCollaborator);
+}
+
+/**
+ * Invites a new collaborator to a tree in Supabase.
+ */
+export async function inviteCollaboratorToSupabase(
+  treeId: string,
+  email: string,
+  role: CollaboratorRole,
+  invitedBy: string
+): Promise<TreeCollaborator | null> {
+  const client = getSupabaseBrowserClient();
+  if (!client) return null;
+
+  // Check if user with this email already exists in profiles
+  const { data: profileData } = await client
+    .from('profiles')
+    .select('id, name')
+    .eq('email', email.trim().toLowerCase())
+    .single();
+
+  const insertPayload = {
+    tree_id: treeId,
+    email: email.trim().toLowerCase(),
+    role,
+    status: 'pending',
+    invited_by: invitedBy,
+    user_id: profileData?.id || null,
+  };
+
+  const { data, error } = await client
+    .from('tree_collaborators')
+    .insert(insertPayload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error inviting collaborator to Supabase:', error);
+    throw error;
+  }
+
+  return rowToTreeCollaborator(data as TreeCollaboratorRow);
+}
+
+/**
+ * Updates a collaborator's role in Supabase.
+ */
+export async function updateCollaboratorRoleInSupabase(
+  collaboratorId: string,
+  role: CollaboratorRole
+): Promise<boolean> {
+  const client = getSupabaseBrowserClient();
+  if (!client) return false;
+
+  const { error } = await client
+    .from('tree_collaborators')
+    .update({ role, updated_at: new Date().toISOString() })
+    .eq('id', collaboratorId);
+
+  if (error) {
+    console.error('Error updating collaborator role in Supabase:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Removes a collaborator from a tree in Supabase.
+ */
+export async function removeCollaboratorFromSupabase(collaboratorId: string): Promise<boolean> {
+  const client = getSupabaseBrowserClient();
+  if (!client) return false;
+
+  const { error } = await client
+    .from('tree_collaborators')
+    .delete()
+    .eq('id', collaboratorId);
+
+  if (error) {
+    console.error('Error removing collaborator from Supabase:', error);
+    return false;
   }
 
   return true;
