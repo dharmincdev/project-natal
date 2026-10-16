@@ -43,7 +43,8 @@ import {
   Check,
   Plus,
   FileSpreadsheet,
-  MoreHorizontal
+  MoreHorizontal,
+  ClipboardCheck
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -579,6 +580,15 @@ function DemoPageContent() {
                     {treeData.people.length} / {limits.maxPeople === Infinity ? 'Unlimited' : limits.maxPeople} relatives
                   </span>
                 </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.open('/qa', '_blank')} className="cursor-pointer flex items-center justify-between">
+                <div className="flex items-center">
+                  <ClipboardCheck className="h-4 w-4 mr-2 text-emerald-600 dark:text-emerald-400" />
+                  <span>QA Testing Plan</span>
+                </div>
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
+                  50 Tests
+                </Badge>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleResetToSample} className="cursor-pointer text-muted-foreground hover:text-foreground">
