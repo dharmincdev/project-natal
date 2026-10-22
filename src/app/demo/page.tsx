@@ -3,57 +3,18 @@
 import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { v4 as uuidv4 } from 'uuid';
-import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { TreeData, Person, Relationship, RelationshipType, RelationshipSubtype } from '@/types/tree';
 import TreeCanvas from '@/components/tree/TreeCanvas';
-import PersonDetailPanel from '@/components/tree/PersonDetailPanel';
-import AddPersonDialog, { NewPersonRelationshipData } from '@/components/tree/AddPersonDialog';
-import AddRelationshipDialog from '@/components/tree/AddRelationshipDialog';
-import QrCodeModal from '@/components/shared/QrCodeModal';
-import ChatPanel from '@/components/chat/ChatPanel';
-import TreeSwitcher from '@/components/tree/TreeSwitcher';
-import ViewModeSwitcher, { ViewMode } from '@/components/tree/ViewModeSwitcher';
-import MobilePersonPreview from '@/components/tree/MobilePersonPreview';
+import { ViewMode } from '@/components/tree/ViewModeSwitcher';
 import TreeTimeline from '@/components/tree/TreeTimeline';
-import SpotlightSearch from '@/components/tree/SpotlightSearch';
-import CreateTreeDialog from '@/components/tree/CreateTreeDialog';
-import ExportTreeModal from '@/components/tree/ExportTreeModal';
-import ImportGedcomDialog from '@/components/tree/ImportGedcomDialog';
-import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
+import DemoHeader from '@/components/tree/demo/DemoHeader';
+import DemoModals from '@/components/tree/demo/DemoModals';
+import { NewPersonRelationshipData } from '@/components/tree/AddPersonDialog';
 import { getTreeData, saveTreeData, resetStoredTree, getStoredCollaborators } from '@/lib/storage';
 import { validateRelationship } from '@/lib/tree-utils';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useTier } from '@/context/TierContext';
-import ThemeToggle from '@/components/shared/ThemeToggle';
-import UserNav from '@/components/shared/UserNav';
-import { 
-  Users, 
-  Link2, 
-  RotateCcw, 
-  ArrowLeft, 
-  QrCode, 
-  Sparkles, 
-  Lock, 
-  Crown, 
-  Zap, 
-  Search, 
-  Download,
-  Check,
-  FileSpreadsheet,
-  MoreHorizontal,
-  ClipboardCheck,
-  AlertCircle,
-  X
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+import { AlertCircle, X } from 'lucide-react';
 
 const TreeOrbit3D = dynamic(() => import('@/components/tree/TreeOrbit3D'), {
   ssr: false,
@@ -80,7 +41,7 @@ function DemoPageContent() {
   const router = useRouter();
   const treeParam = searchParams.get('tree') || 'smith-family';
 
-  const { tier, limits, canAddPerson, hasFeature, openUpgradeModal } = useTier();
+  const { tier, limits, canAddPerson, openUpgradeModal } = useTier();
   const [currentTreeSlug, setCurrentTreeSlug] = useState<string>(treeParam);
   const [viewMode, setViewMode] = useState<ViewMode>('flat');
   const [treeData, setTreeData] = useState<TreeData>(() => getTreeData(treeParam));
@@ -249,25 +210,24 @@ function DemoPageContent() {
         newRelationships.push({
           id: `rel-${uuidv4().substring(0, 8)}`,
           treeId: treeData.tree.id,
-          personAId: relatedPersonId, // Parent
-          personBId: newPersonId,      // Child
+          personAId: relatedPersonId,
+          personBId: newPersonId,
           type: 'parent_child',
-          subtype,
+          subtype: subtype || 'biological',
           startDate: null,
           endDate: null,
           createdAt: new Date().toISOString(),
         });
 
-        // ONLY link co-parent (spouse) if explicitly selected by user (allows half-siblings from other relationships!)
         if (relationshipData.alsoLinkParentIds && relationshipData.alsoLinkParentIds.length > 0) {
-          relationshipData.alsoLinkParentIds.forEach(coParentId => {
+          relationshipData.alsoLinkParentIds.forEach(parentId => {
             newRelationships.push({
               id: `rel-${uuidv4().substring(0, 8)}`,
               treeId: treeData.tree.id,
-              personAId: coParentId,
+              personAId: parentId,
               personBId: newPersonId,
               type: 'parent_child',
-              subtype,
+              subtype: 'biological',
               startDate: null,
               endDate: null,
               createdAt: new Date().toISOString(),
@@ -278,23 +238,22 @@ function DemoPageContent() {
         newRelationships.push({
           id: `rel-${uuidv4().substring(0, 8)}`,
           treeId: treeData.tree.id,
-          personAId: newPersonId,      // Parent
-          personBId: relatedPersonId,  // Child
+          personAId: newPersonId,
+          personBId: relatedPersonId,
           type: 'parent_child',
-          subtype,
+          subtype: subtype || 'biological',
           startDate: null,
           endDate: null,
           createdAt: new Date().toISOString(),
         });
 
-        // ONLY link spouse if explicitly checked by user (e.g. not a single/divorced/adoptive parent)
         if (relationshipData.alsoLinkSpouseIds && relationshipData.alsoLinkSpouseIds.length > 0) {
           relationshipData.alsoLinkSpouseIds.forEach(spouseId => {
             newRelationships.push({
               id: `rel-${uuidv4().substring(0, 8)}`,
               treeId: treeData.tree.id,
-              personAId: spouseId,
-              personBId: newPersonId,
+              personAId: newPersonId,
+              personBId: spouseId,
               type: 'spouse',
               subtype: 'biological',
               startDate: null,
@@ -310,13 +269,12 @@ function DemoPageContent() {
           personAId: relatedPersonId,
           personBId: newPersonId,
           type: 'spouse',
-          subtype,
+          subtype: subtype || 'biological',
           startDate: null,
           endDate: null,
           createdAt: new Date().toISOString(),
         });
 
-        // ONLY link as co-parent if explicitly checked by user (respects step-marriages vs biological parents!)
         if (relationshipData.alsoLinkChildIds && relationshipData.alsoLinkChildIds.length > 0) {
           relationshipData.alsoLinkChildIds.forEach(childId => {
             newRelationships.push({
@@ -325,7 +283,7 @@ function DemoPageContent() {
               personAId: newPersonId,
               personBId: childId,
               type: 'parent_child',
-              subtype: subtype === 'step' ? 'step' : 'biological',
+              subtype: 'biological',
               startDate: null,
               endDate: null,
               createdAt: new Date().toISOString(),
@@ -333,19 +291,6 @@ function DemoPageContent() {
           });
         }
       } else if (relationRole === 'sibling_of') {
-        newRelationships.push({
-          id: `rel-${uuidv4().substring(0, 8)}`,
-          treeId: treeData.tree.id,
-          personAId: relatedPersonId,
-          personBId: newPersonId,
-          type: 'sibling',
-          subtype,
-          startDate: null,
-          endDate: null,
-          createdAt: new Date().toISOString(),
-        });
-
-        // Link only the parents checked by the user (supports full biological, half, or step siblings!)
         if (relationshipData.alsoLinkParentIds && relationshipData.alsoLinkParentIds.length > 0) {
           relationshipData.alsoLinkParentIds.forEach(parentId => {
             newRelationships.push({
@@ -437,234 +382,25 @@ function DemoPageContent() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
-      <header className="px-2 sm:px-3 py-2 border-b flex justify-between items-center bg-card shrink-0 gap-1.5 select-none relative z-20">
-        {/* Zone 1: Context & Tree Switcher */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <Link 
-            href="/dashboard" 
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors shrink-0 p-1"
-            title="Go to Dashboard"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Dashboard</span>
-          </Link>
-          <div className="h-4 w-px bg-border shrink-0 hidden sm:block" />
-          
-          {/* Interactive Tree Switcher */}
-          <TreeSwitcher 
-            currentSlug={currentTreeSlug} 
-            onSelectTree={handleSelectTree}
-            onOpenCreateTree={() => setIsCreateTreeOpen(true)}
-            onOpenImportGedcom={() => setIsImportGedcomOpen(true)}
-          />
-
-          {/* Live Auto-Save Status Indicator */}
-          {saveStatus === 'saving' && (
-            <span className="hidden lg:inline-flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium shrink-0 animate-pulse">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              Saving...
-            </span>
-          )}
-          {saveStatus === 'saved' && (
-            <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0" title="All changes saved locally">
-              <Check className="w-3 h-3 text-emerald-500" />
-              <span className="hidden 2xl:inline">Saved</span>
-            </span>
-          )}
-        </div>
-
-        {/* Zone 2: View Modes & Search */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <ViewModeSwitcher currentMode={viewMode} onSelectMode={setViewMode} />
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsSpotlightOpen(true)}
-            className="h-8 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground bg-background shadow-2xs font-normal shrink-0"
-            title="Search relatives (⌘K)"
-          >
-            <Search className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden 2xl:inline">Search</span>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1 py-0.2 rounded border bg-muted text-[10px] font-mono text-muted-foreground font-semibold">
-              ⌘K
-            </kbd>
-          </Button>
-        </div>
-
-        {/* Zone 3: Actions & Account */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          {/* Import GEDCOM Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsImportGedcomOpen(true)}
-            className="text-xs h-8 px-2 hidden lg:inline-flex border-primary/30 text-primary hover:bg-primary/5 shrink-0"
-            title="Import GEDCOM (.ged) file from Ancestry, MyHeritage, FamilySearch"
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />
-            <span>Import .GED</span>
-          </Button>
-
-          {/* Export Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsExportModalOpen(true)}
-            className="text-xs h-8 px-2 hidden lg:inline-flex shrink-0"
-            title="Export full tree as high-res PNG, printable PDF, or SVG"
-          >
-            <Download className="h-3.5 w-3.5 text-primary mr-1" />
-            <span>Export</span>
-          </Button>
-
-          {/* Share Button (2xl screens; also available in More Actions menu) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsQrModalOpen(true)}
-            className="text-xs h-8 px-2 hidden 2xl:inline-flex shrink-0"
-            title="Share tree & generate QR Code"
-          >
-            <QrCode className="h-3.5 w-3.5 text-primary mr-1" />
-            <span>Share</span>
-          </Button>
-
-          {/* Collaborate Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label="Collaborate"
-            onClick={() => setIsCollaboratorsOpen(true)}
-            className="text-xs h-8 px-2 hidden lg:inline-flex gap-1 shrink-0"
-            title="Collaborate with relatives"
-          >
-            <Users className="h-3.5 w-3.5 text-primary" />
-            <span className="hidden 2xl:inline">Collaborate</span>
-            {collaboratorCount > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 min-w-4 flex items-center justify-center font-bold ml-0.5">
-                {collaboratorCount}
-              </Badge>
-            )}
-          </Button>
-
-          {/* More Actions Dropdown Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-input bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 cursor-pointer" title="More Actions">
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={() => handleOpenAddRelationship()} className="cursor-pointer">
-                <Link2 className="h-4 w-4 mr-2 text-primary" />
-                <span>Connect Relatives</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsQrModalOpen(true)} className="cursor-pointer">
-                <QrCode className="h-4 w-4 mr-2 text-primary" />
-                <span>Share & QR Code</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsCollaboratorsOpen(true)} className="cursor-pointer lg:hidden">
-                <Users className="h-4 w-4 mr-2 text-primary" />
-                <span>Collaborators</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsExportModalOpen(true)} className="cursor-pointer lg:hidden">
-                <Download className="h-4 w-4 mr-2 text-primary" />
-                <span>Export Tree</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsImportGedcomOpen(true)} className="cursor-pointer lg:hidden">
-                <FileSpreadsheet className="h-4 w-4 mr-2 text-primary" />
-                <span>Import GEDCOM</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => openUpgradeModal()} className="cursor-pointer">
-                {tier === 'pro' && <Crown className="h-4 w-4 mr-2 text-violet-600" />}
-                {tier === 'onetime' && <Zap className="h-4 w-4 mr-2 text-blue-600" />}
-                {tier === 'free' && <Crown className="h-4 w-4 mr-2 text-muted-foreground" />}
-                <div className="flex flex-col">
-                  <span className="capitalize font-medium text-xs">{tier} Plan</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {treeData.people.length} / {limits.maxPeople === Infinity ? 'Unlimited' : limits.maxPeople} relatives
-                  </span>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.open('/qa', '_blank')} className="cursor-pointer flex items-center justify-between">
-                <div className="flex items-center">
-                  <ClipboardCheck className="h-4 w-4 mr-2 text-emerald-600 dark:text-emerald-400" />
-                  <span>QA Testing Plan</span>
-                </div>
-                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
-                  50 Tests
-                </Badge>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleResetToSample} className="cursor-pointer text-muted-foreground hover:text-foreground">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                <span>Reset to Sample Data</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* + Add Person Button */}
-          <Button
-            size="sm"
-            onClick={handleOpenAddPerson}
-            className="text-xs h-8 px-2.5 sm:px-3 font-semibold bg-primary text-primary-foreground shadow-xs shrink-0 rounded-lg hover:opacity-90 transition-opacity"
-            title="Add a new family member"
-          >
-            <span>+ Add Person</span>
-          </Button>
-
-          {/* Ask AI Button */}
-          {hasFeature('aiChat') ? (
-            <Button
-              size="sm"
-              onClick={() => setIsChatOpen(true)}
-              className="text-xs h-8 px-2 sm:px-3 font-medium bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs gap-1 shrink-0"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-amber-300 fill-amber-300" /> 
-              <span className="hidden sm:inline">Ask </span>AI
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openUpgradeModal('pro', 'The AI Family Historian is an exclusive Pro feature.')}
-              className="text-xs h-8 px-1.5 sm:px-2.5 font-medium border-violet-200 hover:border-violet-300 dark:border-violet-800 text-muted-foreground hover:text-foreground gap-1 bg-violet-50/40 dark:bg-violet-950/20 shrink-0"
-              title="Unlock AI Family Historian with Pro"
-            >
-              <Lock className="h-3.5 w-3.5 text-amber-500" />
-              <span>AI</span>
-              <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 text-[9px] px-1 py-0 h-4 uppercase font-bold border-0">
-                PRO
-              </Badge>
-            </Button>
-          )}
-
-          {/* Tier Indicator Badge */}
-          <Badge
-            variant="outline"
-            onClick={() => openUpgradeModal(tier === 'free' ? 'pro' : undefined)}
-            className={`cursor-pointer text-xs font-semibold px-2 py-0.5 transition-colors gap-1 hidden 2xl:inline-flex shrink-0 ${
-              tier === 'pro'
-                ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300'
-                : tier === 'onetime'
-                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300'
-                : 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300'
-            }`}
-            title="Click to view plans and upgrade"
-          >
-            {tier === 'pro' && <Crown className="w-3 h-3 text-violet-600" />}
-            {tier === 'onetime' && <Zap className="w-3 h-3 text-blue-600" />}
-            <span className="capitalize">{tier}</span>
-            <span className="text-[10px] opacity-75 font-normal">
-              ({treeData.people.length}/{limits.maxPeople === Infinity ? '∞' : limits.maxPeople})
-            </span>
-          </Badge>
-
-          <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
-          <UserNav />
-          <ThemeToggle />
-        </div>
-      </header>
+      <DemoHeader
+        currentTreeSlug={currentTreeSlug}
+        treeData={treeData}
+        saveStatus={saveStatus}
+        viewMode={viewMode}
+        onSelectMode={setViewMode}
+        collaboratorCount={collaboratorCount}
+        onSelectTree={handleSelectTree}
+        onOpenCreateTree={() => setIsCreateTreeOpen(true)}
+        onOpenImportGedcom={() => setIsImportGedcomOpen(true)}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenQrModal={() => setIsQrModalOpen(true)}
+        onOpenCollaborators={() => setIsCollaboratorsOpen(true)}
+        onOpenAddRelationship={() => handleOpenAddRelationship()}
+        onOpenAddPerson={handleOpenAddPerson}
+        onOpenChat={() => setIsChatOpen(true)}
+        onOpenSpotlight={() => setIsSpotlightOpen(true)}
+        onResetToSample={handleResetToSample}
+      />
       
       <main className="flex-1 relative overflow-hidden">
         {graphAlert && (
@@ -719,113 +455,50 @@ function DemoPageContent() {
         )}
       </main>
 
-      <PersonDetailPanel 
-        person={selectedPerson}
+      <DemoModals
         treeData={treeData}
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        onSave={handleSavePerson}
-        onDeletePerson={handleDeletePerson}
-        onOpenAddRelationship={handleOpenAddRelationship}
-        onAddRelative={handleOpenAddPersonWithRelation}
-        onDeleteRelationship={handleDeleteRelationship}
-        onSelectPerson={handlePersonClick}
-        isEditable={true}
-      />
-
-      <AddPersonDialog 
-        isOpen={isAddDialogOpen}
-        onClose={() => {
-          setIsAddDialogOpen(false);
-          setAddPersonDefaults({});
-        }}
-        onAdd={handleCreatePerson}
-        existingPeople={treeData.people}
-        relationships={treeData.relationships}
-        defaultRelatedPersonId={addPersonDefaults.relatedPersonId ?? selectedPerson?.id}
-        defaultRelationRole={addPersonDefaults.relationRole}
-      />
-
-      <AddRelationshipDialog
-        isOpen={isRelationshipDialogOpen}
-        onClose={() => setIsRelationshipDialogOpen(false)}
-        onAddRelationship={handleAddRelationship}
-        existingPeople={treeData.people}
-        existingRelationships={treeData.relationships}
-        defaultPersonAId={defaultRelPersonAId}
-        defaultType={defaultRelType}
-        onSwitchToAddPerson={handleOpenAddPersonWithRelation}
-      />
-
-      <QrCodeModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        treeName={treeData.tree.name}
-        slug={treeData.tree.slug}
-      />
-
-      {/* High-Resolution PNG / PDF / SVG Export Modal */}
-      <ExportTreeModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        treeData={treeData}
-      />
-
-      {/* Import GEDCOM File Modal */}
-      <ImportGedcomDialog
-        isOpen={isImportGedcomOpen}
-        onClose={() => setIsImportGedcomOpen(false)}
-        onImportSuccess={(newSlug) => {
-          handleSelectTree(newSlug);
-        }}
-      />
-
-      {/* Start New Custom Tree Modal */}
-      <CreateTreeDialog
-        isOpen={isCreateTreeOpen}
-        onClose={() => setIsCreateTreeOpen(false)}
-        onTreeCreated={handleTreeCreated}
-      />
-
-      {/* Tree Collaborators & Permissions Modal */}
-      <CollaboratorsModal
-        isOpen={isCollaboratorsOpen}
-        onClose={() => setIsCollaboratorsOpen(false)}
-        tree={treeData.tree}
+        selectedPerson={selectedPerson}
+        setSelectedPerson={setSelectedPerson}
+        mobilePreviewPerson={mobilePreviewPerson}
+        setMobilePreviewPerson={setMobilePreviewPerson}
+        isPanelOpen={isPanelOpen}
+        setIsPanelOpen={setIsPanelOpen}
+        isAddDialogOpen={isAddDialogOpen}
+        setIsAddDialogOpen={setIsAddDialogOpen}
+        addPersonDefaults={addPersonDefaults}
+        setAddPersonDefaults={setAddPersonDefaults}
+        isRelationshipDialogOpen={isRelationshipDialogOpen}
+        setIsRelationshipDialogOpen={setIsRelationshipDialogOpen}
+        defaultRelPersonAId={defaultRelPersonAId}
+        defaultRelType={defaultRelType}
+        isQrModalOpen={isQrModalOpen}
+        setIsQrModalOpen={setIsQrModalOpen}
+        isExportModalOpen={isExportModalOpen}
+        setIsExportModalOpen={setIsExportModalOpen}
+        isImportGedcomOpen={isImportGedcomOpen}
+        setIsImportGedcomOpen={setIsImportGedcomOpen}
+        isCollaboratorsOpen={isCollaboratorsOpen}
+        setIsCollaboratorsOpen={setIsCollaboratorsOpen}
         onCollaboratorChange={() => {
           setCollaboratorCount(getStoredCollaborators(currentTreeSlug).length);
         }}
-      />
-
-      <ChatPanel
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        treeData={treeData}
-      />
-
-      {/* Spotlight Search & Quick-Jump Palette */}
-      <SpotlightSearch
-        isOpen={isSpotlightOpen}
-        onClose={() => setIsSpotlightOpen(false)}
-        onOpen={() => setIsSpotlightOpen(true)}
-        treeData={treeData}
-        onSelectPerson={handleSelectSpotlightPerson}
-      />
-
-      {/* Mobile Touch Quick-Preview Drawer */}
-      <MobilePersonPreview
-        person={mobilePreviewPerson}
-        onClose={() => setMobilePreviewPerson(null)}
-        onOpenFullProfile={(person) => {
-          setSelectedPerson(person);
-          setMobilePreviewPerson(null);
-          setIsPanelOpen(true);
-        }}
-        onConnect={(personId) => {
-          handleOpenAddRelationship(personId);
-          setMobilePreviewPerson(null);
-        }}
-        isEditable={true}
+        isCreateTreeOpen={isCreateTreeOpen}
+        setIsCreateTreeOpen={setIsCreateTreeOpen}
+        isChatOpen={isChatOpen}
+        setIsChatOpen={setIsChatOpen}
+        isSpotlightOpen={isSpotlightOpen}
+        setIsSpotlightOpen={setIsSpotlightOpen}
+        handlePersonClick={handlePersonClick}
+        handleSelectSpotlightPerson={handleSelectSpotlightPerson}
+        handleSavePerson={handleSavePerson}
+        handleDeletePerson={handleDeletePerson}
+        handleOpenAddRelationship={handleOpenAddRelationship}
+        handleOpenAddPersonWithRelation={handleOpenAddPersonWithRelation}
+        handleDeleteRelationship={handleDeleteRelationship}
+        handleCreatePerson={handleCreatePerson}
+        handleAddRelationship={handleAddRelationship}
+        handleSelectTree={handleSelectTree}
+        handleTreeCreated={handleTreeCreated}
       />
     </div>
   );
