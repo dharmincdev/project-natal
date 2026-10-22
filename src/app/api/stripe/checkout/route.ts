@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe, STRIPE_PLANS, isStripeConfigured } from '@/lib/stripe/client';
+import { stripeCheckoutSchema } from '@/lib/validations/contracts';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { targetTier, userId, userEmail, successUrl, cancelUrl } = body;
-
-    if (targetTier !== 'onetime' && targetTier !== 'pro') {
-      return NextResponse.json({ error: 'Invalid target tier selected' }, { status: 400 });
+    const parseResult = stripeCheckoutSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid checkout request payload', details: parseResult.error.flatten() },
+        { status: 400 }
+      );
     }
+
+    const { targetTier, userId, userEmail, successUrl, cancelUrl } = parseResult.data;
 
     // If Stripe credentials are not yet configured in .env.local, return simulated checkout
     if (!isStripeConfigured()) {

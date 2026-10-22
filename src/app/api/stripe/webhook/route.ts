@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe, isStripeConfigured } from '@/lib/stripe/client';
-import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(req: NextRequest) {
   if (!isStripeConfigured()) {
@@ -25,17 +25,19 @@ export async function POST(req: NextRequest) {
       const targetTier = session.metadata?.targetTier;
       const userId = session.metadata?.userId;
 
-      if (userId && targetTier && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        // Update user profile tier in Supabase
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        );
-
-        await supabase
-          .from('profiles')
-          .update({ tier: targetTier, updated_at: new Date().toISOString() })
-          .eq('id', userId);
+      if (userId && targetTier) {
+        // Update user profile tier in Supabase using privileged admin client
+        const adminClient = getSupabaseAdminClient();
+        if (adminClient) {
+          await adminClient
+            .from('profiles')
+            .update({ tier: targetTier, updated_at: new Date().toISOString() })
+            .eq('id', userId);
+        } else {
+          console.warn(
+            '[Stripe Webhook] SUPABASE_SERVICE_ROLE_KEY not configured. Simulated tier upgrade acknowledged.'
+          );
+        }
       }
     }
 

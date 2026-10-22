@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getTreeDataBySlug } from '@/lib/store';
+import { redactTreeForPublic } from '@/lib/privacy';
 import SharedTreeClient from './SharedTreeClient';
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -42,5 +43,8 @@ export default async function SharedTreePage({ params }: PageProps) {
     );
   }
 
-  return <SharedTreeClient initialTreeData={treeData} />;
+  // SPEC.md §6.1: Redact living individuals on public unauthenticated views
+  const publicTreeData = redactTreeForPublic(treeData);
+
+  return <SharedTreeClient initialTreeData={publicTreeData} />;
 }
