@@ -45,8 +45,9 @@ export default function LandscapeHelper({ onReorient }: LandscapeHelperProps) {
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen();
       }
-      if ('screen' in window && 'orientation' in window.screen && 'lock' in (window.screen.orientation as any)) {
-        await (window.screen.orientation as any).lock('landscape').catch(() => {});
+      const orientation = window.screen.orientation as (ScreenOrientation & { lock?: (orientation: string) => Promise<void> }) | undefined;
+      if (orientation?.lock) {
+        await orientation.lock('landscape').catch(() => {});
       }
     } catch {
       // Fullscreen/lock might not be supported on iOS Safari, which is expected
@@ -116,7 +117,7 @@ export default function LandscapeHelper({ onReorient }: LandscapeHelperProps) {
                 <p className="flex items-start gap-2">
                   <span className="font-bold text-primary">2.</span>
                   <span>
-                    If it doesn't rotate, turn off <strong>Portrait Orientation Lock</strong> in your iPhone Control Center (swipe down from top-right).
+                    If it doesn&apos;t rotate, turn off <strong>Portrait Orientation Lock</strong> in your iPhone Control Center (swipe down from top-right).
                   </span>
                 </p>
               </div>

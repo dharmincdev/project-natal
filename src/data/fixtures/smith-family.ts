@@ -1,4 +1,4 @@
-import { Person, Relationship, TreeData, VaultAttachment } from '@/types/tree';
+import { Milestone, Person, Relationship, TreeData, VaultAttachment } from '@/types/tree';
 
 export function loadSmithFamily(treeId: string): { 
   people: Omit<Person, 'id' | 'createdAt' | 'updatedAt'>[], 
@@ -13,7 +13,7 @@ export function loadSmithFamily(treeId: string): {
     birthPlace: string | null,
     bio: string | null,
     customFields: Record<string, string>,
-    milestones: any[],
+    milestones: Milestone[],
     positionX: number,
     positionY: number,
     photoUrl: string | null = null,
@@ -180,12 +180,12 @@ export async function seedSmithFamily(store: typeof import('@/lib/store')): Prom
   const tree = await store.createTree(treeData.tree.ownerId, treeData.tree.name, treeData.tree.slug, treeData.tree.description || undefined);
   
   for (const person of treeData.people) {
-    const { id, treeId, createdAt, updatedAt, ...rest } = person;
+    const { id: _id, treeId: _treeId, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = person;
     await store.addPerson(tree.id, rest);
   }
 
   for (const rel of treeData.relationships) {
-    const { id, treeId, createdAt, ...rest } = rel;
+    const { id: _id, treeId: _treeId, createdAt: _createdAt, ...rest } = rel;
     await store.addRelationship(tree.id, rest);
   }
 

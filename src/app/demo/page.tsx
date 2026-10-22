@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { v4 as uuidv4 } from 'uuid';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { APP_CONFIG } from '@/config/app';
 import { TreeData, Person, Relationship, RelationshipType, RelationshipSubtype } from '@/types/tree';
 import TreeCanvas from '@/components/tree/TreeCanvas';
 import PersonDetailPanel from '@/components/tree/PersonDetailPanel';
@@ -41,7 +40,6 @@ import {
   Search, 
   Download,
   Check,
-  Plus,
   FileSpreadsheet,
   MoreHorizontal,
   ClipboardCheck
@@ -79,7 +77,7 @@ function DemoPageContent() {
   const router = useRouter();
   const treeParam = searchParams.get('tree') || 'smith-family';
 
-  const { tier, setTier, limits, canAddPerson, hasFeature, openUpgradeModal } = useTier();
+  const { tier, limits, canAddPerson, hasFeature, openUpgradeModal } = useTier();
   const [currentTreeSlug, setCurrentTreeSlug] = useState<string>(treeParam);
   const [viewMode, setViewMode] = useState<ViewMode>('flat');
   const [treeData, setTreeData] = useState<TreeData>(() => getTreeData(treeParam));
@@ -212,20 +210,26 @@ function DemoPageContent() {
   };
 
   const handleCreatePerson = (
-    newPersonData: any,
+    newPersonData: Partial<Person> & { firstName: string; lastName?: string },
     relationshipData?: NewPersonRelationshipData
   ) => {
     const newPersonId = `p-${uuidv4().substring(0, 8)}`;
     const newPerson: Person = {
-      ...newPersonData,
       id: newPersonId,
       treeId: treeData.tree.id,
-      gender: newPersonData.gender || null,
+      firstName: newPersonData.firstName,
+      lastName: newPersonData.lastName || '',
       maidenName: newPersonData.maidenName || null,
       nickname: newPersonData.nickname || null,
+      gender: newPersonData.gender || null,
+      birthDate: newPersonData.birthDate || null,
+      deathDate: newPersonData.deathDate || null,
+      birthPlace: newPersonData.birthPlace || null,
       photoUrl: newPersonData.photoUrl || null,
-      customFields: {},
-      milestones: [],
+      bio: newPersonData.bio || null,
+      customFields: newPersonData.customFields || {},
+      milestones: newPersonData.milestones || [],
+      attachments: newPersonData.attachments || [],
       positionX: 0,
       positionY: 0,
       createdAt: new Date().toISOString(),

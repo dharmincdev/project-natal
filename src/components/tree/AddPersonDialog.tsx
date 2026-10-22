@@ -473,7 +473,7 @@ export default function AddPersonDialog({
                         id="add-relationRole"
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={relationRole}
-                        onChange={e => setRelationRole(e.target.value as any)}
+                        onChange={e => setRelationRole(e.target.value as 'child_of' | 'parent_of' | 'spouse_of' | 'sibling_of')}
                       >
                         <option value="child_of">Child of {selectedRelative?.firstName} (Descendant)</option>
                         <option value="spouse_of">Spouse / Partner of {selectedRelative?.firstName}</option>
@@ -490,7 +490,7 @@ export default function AddPersonDialog({
                         id="add-subtype"
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={subtype}
-                        onChange={e => setSubtype(e.target.value as any)}
+                        onChange={e => setSubtype(e.target.value as RelationshipSubtype)}
                       >
                         <option value="biological">Biological</option>
                         <option value="step">Step</option>

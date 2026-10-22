@@ -56,9 +56,9 @@ export default function ImportGedcomDialog({
 
       const result = parseGedcom(text, { treeName: defaultName });
       setParseResult(result);
-    } catch (err: any) {
+    } catch (err) {
       console.error('GEDCOM parse error:', err);
-      setErrorMessage(err.message || 'Failed to parse GEDCOM file. Please check format.');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to parse GEDCOM file. Please check format.');
       setParseResult(null);
     } finally {
       setIsParsing(false);
@@ -99,8 +99,8 @@ export default function ImportGedcomDialog({
       }
 
       onClose();
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Error saving imported tree.');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Error saving imported tree.');
     } finally {
       setIsImporting(false);
     }

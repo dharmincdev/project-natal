@@ -91,7 +91,7 @@ export default function AudioRecorder({
       timerIntervalRef.current = setInterval(() => {
         setTimerSeconds((prev) => prev + 1);
       }, 1000);
-    } catch (err: any) {
+    } catch (err) {
       console.warn('Microphone error, falling back to simulated mode:', err);
       setPermissionError(
         'Microphone unavailable or blocked. You can still test with a simulated voice memory below.'

@@ -132,8 +132,8 @@ export function exportToGedcom(treeData: TreeData): string {
     handledCouplePairs.add(pairKey);
 
     // Identify husband vs wife if gender is known
-    let husb = pA.gender === 'female' ? pB : pA;
-    let wife = pA.gender === 'female' ? pA : pB;
+    const husb = pA.gender === 'female' ? pB : pA;
+    const wife = pA.gender === 'female' ? pA : pB;
 
     const famXref = `@F${famIdx++}@`;
 

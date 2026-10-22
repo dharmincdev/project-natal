@@ -343,8 +343,8 @@ export function layoutFamilyTree3D(
         const y = pA.position[1];
         const points: [number, number, number][] = [];
 
-        let a1 = pA.angle;
-        let a2 = pB.angle;
+        const a1 = pA.angle;
+        const a2 = pB.angle;
 
         let diff = a2 - a1;
         while (diff > Math.PI) diff -= 2 * Math.PI;

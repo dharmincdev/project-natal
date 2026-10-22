@@ -1,5 +1,18 @@
 import { getSupabaseBrowserClient } from './client';
-import { FamilyTree, Person, Relationship, TreeData, TreeCollaborator, CollaboratorRole, CollaboratorStatus } from '@/types/tree';
+import { 
+  FamilyTree, 
+  Person, 
+  Relationship, 
+  TreeData, 
+  TreeCollaborator, 
+  CollaboratorRole, 
+  CollaboratorStatus,
+  Gender,
+  Milestone,
+  VaultAttachment,
+  RelationshipType,
+  RelationshipSubtype,
+} from '@/types/tree';
 
 // Row types matching Supabase PostgreSQL tables
 export type ProfileRow = {
@@ -41,8 +54,8 @@ export type PersonRow = {
   photo_url: string | null;
   bio: string | null;
   custom_fields: Record<string, string>;
-  milestones: any[];
-  attachments?: any[];
+  milestones: Milestone[];
+  attachments?: VaultAttachment[];
   position_x: number;
   position_y: number;
   created_at: string;
@@ -83,7 +96,7 @@ export function rowToPerson(row: PersonRow): Person {
     lastName: row.last_name || '',
     maidenName: row.maiden_name,
     nickname: row.nickname,
-    gender: (row.gender as any) || null,
+    gender: (row.gender as Gender) || null,
     birthDate: row.birth_date,
     deathDate: row.death_date,
     birthPlace: row.birth_place,
@@ -105,8 +118,8 @@ export function rowToRelationship(row: RelationshipRow): Relationship {
     treeId: row.tree_id,
     personAId: row.person_a_id,
     personBId: row.person_b_id,
-    type: row.type as any,
-    subtype: row.subtype as any,
+    type: row.type as RelationshipType,
+    subtype: row.subtype as RelationshipSubtype,
     startDate: row.start_date,
     endDate: row.end_date,
     createdAt: row.created_at,

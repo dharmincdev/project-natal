@@ -13,6 +13,7 @@ import {
   Connection,
   addEdge,
   ReactFlowInstance,
+  OnNodeDrag,
   StraightEdge,
   SmoothStepEdge,
   StepEdge,
@@ -69,7 +70,7 @@ export default function TreeCanvas({
   isEditable 
 }: TreeCanvasProps) {
   const { resolvedTheme } = useTheme();
-  const [rfInstance, setRfInstance] = useState<ReactFlowInstance<any, any> | null>(null);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance<Node, Edge> | null>(null);
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [showHint, setShowHint] = useState(true);
   const [customPositions, setCustomPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -179,7 +180,7 @@ export default function TreeCanvas({
   }, [highlightedPersonId, rfInstance, nodes]);
 
   // Handle node drag end to remember position
-  const onNodeDragStop = useCallback((_: any, node: Node) => {
+  const onNodeDragStop: OnNodeDrag = useCallback((_, node) => {
     if (node.type === 'union') return;
     setCustomPositions(prev => ({
       ...prev,

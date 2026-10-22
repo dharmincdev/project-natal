@@ -1,4 +1,4 @@
-import { TreeData, Person, Relationship } from '@/types/tree';
+import { TreeData, Person } from '@/types/tree';
 
 export type GeoEventType = 'birth' | 'marriage' | 'education' | 'career' | 'memorial' | 'other';
 
@@ -980,7 +980,7 @@ export function extractTreeGeoEvents(treeData: TreeData): {
     // 3. Milestones (Graduations, Careers, Achievements with location or inferring)
     if (p.milestones && p.milestones.length > 0) {
       p.milestones.forEach((m) => {
-        const place = (m as any).location || p.birthPlace;
+        const place = m.location || p.birthPlace;
         if (place) {
           const geo = resolveLocation(place);
           if (geo) {
@@ -1044,7 +1044,7 @@ export function extractTreeGeoEvents(treeData: TreeData): {
   const PROXIMITY_THRESHOLD = 0.4;
 
   for (const ev of events) {
-    let matchedCluster = clusters.find(
+    const matchedCluster = clusters.find(
       (c) => Math.abs(c.lat - ev.lat) < PROXIMITY_THRESHOLD && Math.abs(c.lng - ev.lng) < PROXIMITY_THRESHOLD
     );
 

@@ -89,7 +89,7 @@ export default function CollaboratorsModal({
       // Local storage fallback
       const localList = getStoredCollaborators(tree.slug || tree.id);
       setCollaborators(localList);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error loading collaborators:', err);
       // Fallback
       setCollaborators(getStoredCollaborators(tree.slug || tree.id));
@@ -143,7 +143,7 @@ export default function CollaboratorsModal({
           role: selectedRole,
           status: 'pending',
           invitedBy: user?.id || 'demo-user',
-          invitedByName: profile?.name || (user?.user_metadata as any)?.full_name || 'Tree Owner',
+          invitedByName: profile?.name || (user?.user_metadata as Record<string, unknown> | undefined)?.full_name as string | undefined || 'Tree Owner',
         });
         setCollaborators((prev) => [...prev, newCollab]);
       }
@@ -151,8 +151,8 @@ export default function CollaboratorsModal({
       setEmailInput('');
       setSuccessMsg(`Invite sent to ${email} as ${selectedRole}!`);
       if (onCollaboratorChange) onCollaboratorChange();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to send invite.');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to send invite.');
     } finally {
       setIsLoading(false);
     }

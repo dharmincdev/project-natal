@@ -887,7 +887,7 @@ export function layoutFamilyTree(
     const tX = tNode.position.x + nodeWidth / 2;
     const tY = tNode.position.y;
 
-    const edgeData = e.data as any;
+    const edgeData = e.data as { viaX?: number; channel1Y?: number; channel2Y?: number; busY?: number } | undefined;
 
     if (edgeData?.viaX !== undefined) {
       const c1Y = edgeData.channel1Y ?? sY + 80;

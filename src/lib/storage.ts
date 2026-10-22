@@ -182,7 +182,7 @@ export function saveTreeData(treeData: TreeData): void {
     const isSample = SAMPLE_TREES.some((s) => s.slug === treeData.tree.slug);
     if (!isSample) {
       const rawCustom = localStorage.getItem(CUSTOM_TREES_KEY);
-      let customTrees: FamilyTree[] = rawCustom ? JSON.parse(rawCustom) : [];
+      const customTrees: FamilyTree[] = rawCustom ? JSON.parse(rawCustom) : [];
       const existingIdx = customTrees.findIndex((t) => t.id === treeData.tree.id || t.slug === treeData.tree.slug);
 
       if (existingIdx >= 0) {

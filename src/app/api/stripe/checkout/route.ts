@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const plan = STRIPE_PLANS[targetTier as 'onetime' | 'pro'];
     const origin = req.headers.get('origin') || 'http://localhost:3000';
 
-    const sessionParams: any = {
+    const sessionParams: import('stripe').default.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -55,8 +55,9 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ url: session.url });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Stripe checkout session error:', err);
-    return NextResponse.json({ error: err.message || 'Failed to create checkout session' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Failed to create checkout session';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

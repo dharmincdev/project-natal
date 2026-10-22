@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as any;
+      const session = event.data.object as import('stripe').default.Checkout.Session;
       const targetTier = session.metadata?.targetTier;
       const userId = session.metadata?.userId;
 
@@ -40,8 +40,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Stripe webhook error:', err);
-    return NextResponse.json({ error: err.message || 'Webhook verification failed' }, { status: 400 });
+    const message = err instanceof Error ? err.message : 'Webhook verification failed';
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
