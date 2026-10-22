@@ -22,6 +22,7 @@ import ExportTreeModal from '@/components/tree/ExportTreeModal';
 import ImportGedcomDialog from '@/components/tree/ImportGedcomDialog';
 import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
 import { getTreeData, saveTreeData, resetStoredTree, getStoredCollaborators } from '@/lib/storage';
+import { validateRelationship } from '@/lib/tree-utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTier } from '@/context/TierContext';
@@ -42,7 +43,9 @@ import {
   Check,
   FileSpreadsheet,
   MoreHorizontal,
-  ClipboardCheck
+  ClipboardCheck,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -102,6 +105,7 @@ function DemoPageContent() {
     relatedPersonId?: string;
     relationRole?: 'child_of' | 'parent_of' | 'spouse_of' | 'sibling_of';
   }>({});
+  const [graphAlert, setGraphAlert] = useState<string | null>(null);
   
   const isInitialMount = useRef(true);
 
@@ -377,15 +381,12 @@ function DemoPageContent() {
     type: RelationshipType;
     subtype: RelationshipSubtype;
   }) => {
-    // Check if relationship already exists
-    const exists = treeData.relationships.some(
-      r => r.type === relData.type && 
-        ((r.personAId === relData.personAId && r.personBId === relData.personBId) ||
-         (r.type === 'spouse' && r.personAId === relData.personBId && r.personBId === relData.personAId) ||
-         (r.type === 'sibling' && r.personAId === relData.personBId && r.personBId === relData.personAId))
-    );
-
-    if (exists) return;
+    const validation = validateRelationship(relData, treeData.relationships);
+    if (!validation.isValid) {
+      setGraphAlert(validation.error);
+      return;
+    }
+    setGraphAlert(null);
 
     const newRel: Relationship = {
       id: `rel-${uuidv4().substring(0, 8)}`,
@@ -666,6 +667,24 @@ function DemoPageContent() {
       </header>
       
       <main className="flex-1 relative overflow-hidden">
+        {graphAlert && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-lg border border-destructive/40 bg-destructive/15 text-destructive backdrop-blur-md shadow-lg text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+                <span>{graphAlert}</span>
+              </div>
+              <button
+                onClick={() => setGraphAlert(null)}
+                className="p-1 hover:bg-destructive/20 rounded-md transition-colors"
+                aria-label="Dismiss error"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {viewMode === 'flat' ? (
           <TreeCanvas 
             treeData={treeData} 
@@ -673,6 +692,7 @@ function DemoPageContent() {
             onAddPerson={handleOpenAddPerson}
             onOpenAddRelationship={() => handleOpenAddRelationship()}
             onConnectRelationship={handleAddRelationship}
+            onRelationshipError={setGraphAlert}
             isEditable={true}
             highlightedPersonId={highlightedPersonId}
           />
@@ -731,6 +751,7 @@ function DemoPageContent() {
         onClose={() => setIsRelationshipDialogOpen(false)}
         onAddRelationship={handleAddRelationship}
         existingPeople={treeData.people}
+        existingRelationships={treeData.relationships}
         defaultPersonAId={defaultRelPersonAId}
         defaultType={defaultRelType}
         onSwitchToAddPerson={handleOpenAddPersonWithRelation}

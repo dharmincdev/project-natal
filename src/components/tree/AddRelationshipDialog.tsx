@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Person, RelationshipType, RelationshipSubtype } from '@/types/tree';
+import { Person, Relationship, RelationshipType, RelationshipSubtype } from '@/types/tree';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Link2, UserPlus } from 'lucide-react';
+import { Link2, UserPlus, AlertCircle } from 'lucide-react';
+import { validateRelationship } from '@/lib/tree-utils';
 
 export type RelChoiceType = 'spouse' | 'parent_of' | 'child_of' | 'sibling';
 
@@ -19,6 +20,7 @@ type AddRelationshipDialogProps = {
     subtype: RelationshipSubtype;
   }) => void;
   existingPeople: Person[];
+  existingRelationships?: Relationship[];
   defaultPersonAId?: string;
   defaultType?: RelationshipType | RelChoiceType;
   onSwitchToAddPerson?: (personId?: string, defaultRole?: 'parent_of' | 'child_of' | 'spouse_of') => void;
@@ -29,12 +31,14 @@ export default function AddRelationshipDialog({
   onClose,
   onAddRelationship,
   existingPeople,
+  existingRelationships,
   defaultPersonAId,
   defaultType = 'spouse',
   onSwitchToAddPerson,
 }: AddRelationshipDialogProps) {
   const [personAId, setPersonAId] = useState(defaultPersonAId || '');
   const [personBId, setPersonBId] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   const resolveInitialType = (dt: RelationshipType | RelChoiceType): RelChoiceType => {
     if (dt === 'parent_child') return 'parent_of';
@@ -56,6 +60,10 @@ export default function AddRelationshipDialog({
     }
   }, [defaultType]);
 
+  useEffect(() => {
+    setValidationError(null);
+  }, [personAId, personBId, type, subtype, isOpen]);
+
   const personA = existingPeople.find(p => p.id === personAId);
   const personB = existingPeople.find(p => p.id === personBId);
   const otherPeople = existingPeople.filter(p => p.id !== personAId);
@@ -63,31 +71,49 @@ export default function AddRelationshipDialog({
   const handleConnect = () => {
     if (!personAId || !personBId || personAId === personBId) return;
 
+    let candidateRel: {
+      personAId: string;
+      personBId: string;
+      type: RelationshipType;
+      subtype: RelationshipSubtype;
+    };
+
     if (type === 'child_of') {
       // Invert: personB is the parent (personAId in relationship), personA is the child (personBId)
-      onAddRelationship({
+      candidateRel = {
         personAId: personBId,
         personBId: personAId,
         type: 'parent_child',
         subtype,
-      });
+      };
     } else if (type === 'parent_of') {
-      onAddRelationship({
+      candidateRel = {
         personAId: personAId,
         personBId: personBId,
         type: 'parent_child',
         subtype,
-      });
+      };
     } else {
-      onAddRelationship({
+      candidateRel = {
         personAId,
         personBId,
         type: type as RelationshipType,
         subtype,
-      });
+      };
     }
 
+    if (existingRelationships) {
+      const result = validateRelationship(candidateRel, existingRelationships);
+      if (!result.isValid) {
+        setValidationError(result.error);
+        return;
+      }
+    }
+
+    onAddRelationship(candidateRel);
+
     // Reset
+    setValidationError(null);
     setPersonBId('');
     onClose();
   };
@@ -215,6 +241,14 @@ export default function AddRelationshipDialog({
               <option value="half">Half</option>
             </select>
           </div>
+
+          {/* Validation Error Alert */}
+          {validationError && (
+            <div className="flex items-start gap-2.5 p-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-xs font-medium">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{validationError}</span>
+            </div>
+          )}
 
           {/* Summary Preview */}
           {personA && personB && (

@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Link2, RotateCcw, ZoomIn } from 'lucide-react';
 import { layoutFamilyTree } from '@/lib/layout';
 import { useTheme } from '@/context/ThemeContext';
+import { validateRelationship } from '@/lib/tree-utils';
 
 const nodeTypes = {
   person: PersonNode,
@@ -56,6 +57,7 @@ type TreeCanvasProps = {
     type: RelationshipType;
     subtype: RelationshipSubtype;
   }) => void;
+  onRelationshipError?: (error: string) => void;
   highlightedPersonId?: string | null;
   isEditable: boolean;
 };
@@ -66,6 +68,7 @@ export default function TreeCanvas({
   onAddPerson, 
   onOpenAddRelationship,
   onConnectRelationship,
+  onRelationshipError,
   highlightedPersonId,
   isEditable 
 }: TreeCanvasProps) {
@@ -200,15 +203,23 @@ export default function TreeCanvas({
       relType = 'spouse';
     }
 
-    if (onConnectRelationship) {
-      onConnectRelationship({
-        personAId: connection.source,
-        personBId: connection.target,
-        type: relType,
-        subtype: 'biological',
-      });
+    const candidateRel = {
+      personAId: connection.source,
+      personBId: connection.target,
+      type: relType,
+      subtype: 'biological' as const,
+    };
+
+    const validation = validateRelationship(candidateRel, treeData.relationships);
+    if (!validation.isValid) {
+      onRelationshipError?.(validation.error);
+      return;
     }
-  }, [onConnectRelationship]);
+
+    if (onConnectRelationship) {
+      onConnectRelationship(candidateRel);
+    }
+  }, [onConnectRelationship, onRelationshipError, treeData.relationships]);
 
   const handleResetLayout = () => {
     setCustomPositions({});

@@ -10,8 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { getParents, getSpouses, getChildren, getSiblings } from '@/lib/tree-utils';
-import { UserPlus, Heart, Users, Trash2, Calendar, MapPin, Briefcase, Archive } from 'lucide-react';
+import { getParents, getSpouses, getChildren, getSiblings, calculateKinship } from '@/lib/tree-utils';
+import { UserPlus, Heart, Users, Trash2, Calendar, MapPin, Briefcase, Archive, GitBranch } from 'lucide-react';
 import CityCombobox from './CityCombobox';
 import PersonVaultSection from './PersonVaultSection';
 
@@ -44,6 +44,10 @@ export default function PersonDetailPanel({
 }: PersonDetailPanelProps) {
   const [formData, setFormData] = useState<Partial<Person>>({});
   const [isDeceased, setIsDeceased] = useState(false);
+  const [compareTargetId, setCompareTargetId] = useState<string>('');
+
+  // Root person of tree (apex ancestor with no parents, or people[0])
+  const rootPerson = treeData.people.find(p => getParents(p.id, treeData.people, treeData.relationships).length === 0) || treeData.people[0];
 
   useEffect(() => {
     if (person) {
@@ -51,6 +55,15 @@ export default function PersonDetailPanel({
       setIsDeceased(Boolean(person.deathDate));
     }
   }, [person]);
+
+  useEffect(() => {
+    if (person && rootPerson) {
+      const defaultTarget = rootPerson.id === person.id 
+        ? (treeData.people.find(p => p.id !== person.id)?.id || '') 
+        : rootPerson.id;
+      setCompareTargetId(defaultTarget);
+    }
+  }, [person, rootPerson, treeData.people]);
 
   if (!person) return null;
 
@@ -94,6 +107,17 @@ export default function PersonDetailPanel({
   const spouses = getSpouses(person.id, treeData.people, treeData.relationships);
   const children = getChildren(person.id, treeData.people, treeData.relationships);
   const siblings = getSiblings(person.id, treeData.people, treeData.relationships);
+
+  const kinshipToRoot = rootPerson && rootPerson.id !== person.id
+    ? calculateKinship(person.id, rootPerson.id, treeData)
+    : null;
+
+  const compareTarget = treeData.people.find(p => p.id === compareTargetId);
+  const activeKinship = compareTarget && compareTarget.id !== person.id
+    ? calculateKinship(person.id, compareTarget.id, treeData)
+    : null;
+
+  const otherFamilyMembers = treeData.people.filter(p => p.id !== person.id);
 
   const getRelId = (aId: string, bId: string, type: RelationshipType) => {
     const found = treeData.relationships.find(
@@ -172,6 +196,17 @@ export default function PersonDetailPanel({
                   <MapPin className="h-3.5 w-3.5" />
                   {person.birthPlace}
                 </p>
+              )}
+              {kinshipToRoot && kinshipToRoot.relationship !== 'Unrelated' && kinshipToRoot.relationship !== 'Self' && (
+                <div className="pt-1">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                    <GitBranch className="h-3 w-3 shrink-0" />
+                    <span>
+                      {kinshipToRoot.relationship} of {rootPerson?.firstName} {rootPerson?.lastName}
+                      {kinshipToRoot.degree && ` (${kinshipToRoot.degree})`}
+                    </span>
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -373,6 +408,75 @@ export default function PersonDetailPanel({
               </div>
             </div>
           </div>
+
+          {/* Kinship Computing Engine (SPEC.md §4.3) */}
+          {otherFamilyMembers.length > 0 && (
+            <div className="space-y-3 p-4 rounded-xl border bg-card/60 backdrop-blur-sm shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-primary" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Kinship & Consanguinity
+                  </h3>
+                </div>
+                <span className="text-[10px] text-muted-foreground uppercase font-semibold">LCA Engine</span>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="kinship-compare" className="text-xs font-medium text-muted-foreground">
+                  Calculate relationship relative to:
+                </Label>
+                <select
+                  id="kinship-compare"
+                  value={compareTargetId}
+                  onChange={(e) => setCompareTargetId(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  {otherFamilyMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.firstName} {m.lastName} {m.id === rootPerson?.id ? '(Tree Root)' : ''}
+                    </option>
+                  ))}
+                </select>
+
+                {activeKinship && (
+                  <div className="mt-2.5 p-3 rounded-lg border bg-primary/5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-primary">
+                        {activeKinship.relationship}
+                      </span>
+                      {activeKinship.degree && (
+                        <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+                          {activeKinship.degree}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {activeKinship.description}
+                    </p>
+                    {activeKinship.commonAncestorIds.length > 0 && (
+                      <div className="pt-1 flex items-center gap-1.5 flex-wrap text-[11px] text-muted-foreground">
+                        <span className="font-semibold">Shared Ancestors:</span>
+                        {activeKinship.commonAncestorIds.map((caId) => {
+                          const ca = treeData.people.find((p) => p.id === caId);
+                          if (!ca) return null;
+                          return (
+                            <span
+                              key={caId}
+                              onClick={() => onSelectPerson?.(ca)}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded bg-background border hover:border-primary cursor-pointer transition-colors text-foreground font-medium"
+                            >
+                              {ca.firstName} {ca.lastName}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Edit Form / Details Section */}
           <div className="space-y-4">
