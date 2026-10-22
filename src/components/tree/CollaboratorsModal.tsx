@@ -3,31 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
-  UserPlus, 
-  Shield, 
-  Eye, 
-  Edit3, 
-  Trash2, 
   Copy, 
   Check, 
-  Mail, 
-  Clock, 
-  Crown, 
-  Sparkles, 
-  Lock,
-  ChevronDown
+  Sparkles 
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { TreeCollaborator, CollaboratorRole, FamilyTree } from '@/types/tree';
-import { 
-  ROLE_DETAILS, 
-  canManageCollaborators, 
-  getEffectiveTreeRole 
-} from '@/lib/permissions';
+import { canManageCollaborators } from '@/lib/permissions';
 import { 
   getStoredCollaborators, 
   addStoredCollaborator, 
@@ -43,6 +26,8 @@ import {
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useTier } from '@/context/TierContext';
+import CollaboratorInviteForm from './collaborators/CollaboratorInviteForm';
+import CollaboratorsList from './collaborators/CollaboratorsList';
 
 type CollaboratorsModalProps = {
   isOpen: boolean;
@@ -91,7 +76,6 @@ export default function CollaboratorsModal({
       setCollaborators(localList);
     } catch (err) {
       console.error('Error loading collaborators:', err);
-      // Fallback
       setCollaborators(getStoredCollaborators(tree.slug || tree.id));
     } finally {
       setIsLoading(false);
@@ -269,202 +253,25 @@ export default function CollaboratorsModal({
           </div>
 
           {/* Invite Form */}
-          {canManage ? (
-            <form onSubmit={handleInvite} className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                Invite New Contributor
-              </label>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    type="email"
-                    placeholder="relative@familyemail.com"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    className="pl-9 h-9 text-xs"
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as CollaboratorRole)}
-                  className="h-9 px-3 text-xs rounded-md border border-input bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:w-32"
-                  disabled={isLoading}
-                >
-                  <option value="editor">Editor</option>
-                  <option value="viewer">Viewer</option>
-                  <option value="admin">Admin</option>
-                </select>
-
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isLoading || !emailInput.trim()}
-                  className="h-9 text-xs font-semibold gap-1.5 shrink-0 bg-primary text-primary-foreground"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Send Invite</span>
-                </Button>
-              </div>
-
-              {/* Role Explanations */}
-              <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] text-muted-foreground">
-                <div className="p-2 rounded-lg bg-muted/20 border border-muted">
-                  <span className="font-semibold text-foreground flex items-center gap-1">
-                    <Edit3 className="w-3 h-3 text-blue-500" /> Editor
-                  </span>
-                  <p className="mt-0.5 text-[10px] leading-tight">Add/edit relatives, connections & stories</p>
-                </div>
-                <div className="p-2 rounded-lg bg-muted/20 border border-muted">
-                  <span className="font-semibold text-foreground flex items-center gap-1">
-                    <Eye className="w-3 h-3 text-zinc-500" /> Viewer
-                  </span>
-                  <p className="mt-0.5 text-[10px] leading-tight">Explore private tree and leaves stories</p>
-                </div>
-                <div className="p-2 rounded-lg bg-muted/20 border border-muted">
-                  <span className="font-semibold text-foreground flex items-center gap-1">
-                    <Shield className="w-3 h-3 text-purple-500" /> Admin
-                  </span>
-                  <p className="mt-0.5 text-[10px] leading-tight">Full edit rights plus invite others</p>
-                </div>
-              </div>
-
-              {errorMsg && (
-                <p className="text-xs text-rose-500 font-medium bg-rose-50 dark:bg-rose-950/30 p-2 rounded-lg border border-rose-200 dark:border-rose-900">
-                  {errorMsg}
-                </p>
-              )}
-              {successMsg && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded-lg border border-emerald-200 dark:border-emerald-900">
-                  {successMsg}
-                </p>
-              )}
-            </form>
-          ) : (
-            <div className="p-3 rounded-lg border bg-muted/30 text-xs text-muted-foreground flex items-center gap-2">
-              <Lock className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>You have Contributor access to this tree. Only Tree Owners and Admins can invite new members.</span>
-            </div>
-          )}
+          <CollaboratorInviteForm
+            emailInput={emailInput}
+            setEmailInput={setEmailInput}
+            selectedRole={selectedRole}
+            setSelectedRole={setSelectedRole}
+            onSubmit={handleInvite}
+            isLoading={isLoading}
+            errorMsg={errorMsg}
+            successMsg={successMsg}
+            canManage={canManage}
+          />
 
           {/* Members List */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Active Members & Contributors ({collaborators.length + 1})
-              </label>
-            </div>
-
-            <div className="divide-y border rounded-xl overflow-hidden bg-card">
-              {/* Owner Row */}
-              <div className="p-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar className="w-8 h-8 border">
-                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                      OW
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-semibold text-foreground truncate">
-                        Tree Creator
-                      </p>
-                      <Crown className="w-3 h-3 text-amber-500" />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      Primary family tree administrator
-                    </p>
-                  </div>
-                </div>
-
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 ${ROLE_DETAILS.owner.badgeColor}`}
-                >
-                  Owner
-                </Badge>
-              </div>
-
-              {/* Collaborators Rows */}
-              {collaborators.map((collab) => {
-                const initials = collab.email.substring(0, 2).toUpperCase();
-                const isPending = collab.status === 'pending';
-
-                return (
-                  <div key={collab.id} className="p-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="w-8 h-8 border">
-                        <AvatarFallback className="text-xs font-semibold bg-muted text-muted-foreground">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-semibold text-foreground truncate">
-                            {collab.invitedByName || collab.email.split('@')[0]}
-                          </p>
-                          {isPending && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 text-amber-600 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40">
-                              <Clock className="w-2.5 h-2.5 mr-0.5" /> Pending
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground truncate">
-                          {collab.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {canManage ? (
-                        <select
-                          value={collab.role}
-                          onChange={(e) => handleRoleChange(collab.id, e.target.value as CollaboratorRole)}
-                          className="h-7 px-2 text-[11px] font-medium rounded-md border border-input bg-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        >
-                          <option value="editor">Editor</option>
-                          <option value="viewer">Viewer</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 ${
-                            ROLE_DETAILS[collab.role]?.badgeColor || ''
-                          }`}
-                        >
-                          {collab.role}
-                        </Badge>
-                      )}
-
-                      {canManage && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemove(collab.id, collab.email)}
-                          className="w-7 h-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                          title="Remove collaborator"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {collaborators.length === 0 && (
-                <div className="p-6 text-center text-xs text-muted-foreground">
-                  <Users className="w-6 h-6 mx-auto mb-2 opacity-40" />
-                  <p>No external collaborators invited yet.</p>
-                  <p className="text-[11px] mt-0.5">Use the invite form above to add family members.</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <CollaboratorsList
+            collaborators={collaborators}
+            canManage={canManage}
+            onRoleChange={handleRoleChange}
+            onRemove={handleRemove}
+          />
         </div>
 
         {/* Footer */}
