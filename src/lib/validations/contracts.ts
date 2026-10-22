@@ -8,6 +8,7 @@ export const treeSettingsSchema = z.object({
   isPublic: z.boolean().default(true),
   allowClaiming: z.boolean().default(false),
   theme: z.enum(['light', 'dark', 'system']).default('light'),
+  livingPrivacyRedaction: z.boolean().default(true),
 });
 
 export const treeSchema = z.object({
@@ -19,7 +20,7 @@ export const treeSchema = z.object({
     .max(100, 'Slug cannot exceed 100 characters')
     .regex(/^[a-z0-9-]+$/, 'Slug must only contain lowercase alphanumeric characters and hyphens'),
   description: z.string().trim().max(500, 'Description cannot exceed 500 characters').nullable().optional(),
-  settings: treeSettingsSchema.default({ isPublic: true, allowClaiming: false, theme: 'light' }),
+  settings: treeSettingsSchema.default({ isPublic: true, allowClaiming: false, theme: 'light', livingPrivacyRedaction: true }),
 });
 
 export const createTreeSchema = treeSchema;

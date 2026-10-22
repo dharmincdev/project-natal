@@ -69,6 +69,10 @@ export function redactLivingPerson(person: Person): Person {
  * SPEC.md §6.1: Public routes (/t/[slug]) must never leak living persons' private identities.
  */
 export function redactTreeForPublic(treeData: TreeData): TreeData {
+  if (treeData.tree.settings?.livingPrivacyRedaction === false) {
+    return treeData;
+  }
+
   return {
     ...treeData,
     people: treeData.people.map(redactLivingPerson),

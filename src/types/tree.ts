@@ -76,6 +76,7 @@ export type TreeSettings = {
   isPublic: boolean;
   allowClaiming: boolean;
   theme: string;
+  livingPrivacyRedaction?: boolean;
 };
 
 export type FamilyTree = {

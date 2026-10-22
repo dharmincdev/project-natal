@@ -115,6 +115,7 @@ export function canManageCollaborators(
 
 /**
  * Checks if the user has permission to delete the entire tree.
+ * SPEC.md §6.2: Only Owner can delete tree.
  */
 export function canDeleteTree(
   user: { id?: string; email?: string } | null,
@@ -124,4 +125,69 @@ export function canDeleteTree(
     return !tree.ownerId || tree.ownerId === 'demo-user' || tree.ownerId === 'local-user';
   }
   return tree.ownerId === user.id;
+}
+
+/**
+ * Checks if the user has permission to record oral history audio stories.
+ * SPEC.md §6.2: Editor, Admin, or Owner required.
+ */
+export function canRecordAudioMemories(
+  user: { id?: string; email?: string } | null,
+  tree: FamilyTree,
+  collaborators: TreeCollaborator[] = []
+): boolean {
+  const role = getEffectiveTreeRole(user, tree, collaborators);
+  return role === 'owner' || role === 'admin' || role === 'editor';
+}
+
+/**
+ * Checks if the user has permission to import or export GEDCOM files.
+ * SPEC.md §6.2: Viewer, Editor, Admin, or Owner required.
+ */
+export function canExportGedcom(
+  user: { id?: string; email?: string } | null,
+  tree: FamilyTree,
+  collaborators: TreeCollaborator[] = []
+): boolean {
+  const role = getEffectiveTreeRole(user, tree, collaborators);
+  return role === 'owner' || role === 'admin' || role === 'editor' || role === 'viewer';
+}
+
+/**
+ * Checks if the user has permission to import GEDCOM files.
+ * SPEC.md §6.2: Viewer, Editor, Admin, or Owner required.
+ */
+export function canImportGedcom(
+  user: { id?: string; email?: string } | null,
+  tree: FamilyTree,
+  collaborators: TreeCollaborator[] = []
+): boolean {
+  return canExportGedcom(user, tree, collaborators);
+}
+
+/**
+ * Checks if the user has permission to view the tree.
+ * Returns true if tree is public or user is an authenticated collaborator/owner.
+ */
+export function canViewTree(
+  user: { id?: string; email?: string } | null,
+  tree: FamilyTree,
+  collaborators: TreeCollaborator[] = []
+): boolean {
+  if (tree.settings.isPublic) return true;
+  const role = getEffectiveTreeRole(user, tree, collaborators);
+  return role !== 'guest';
+}
+
+/**
+ * Determines whether the tree view should redact living persons for the current user.
+ * SPEC.md §6.1 & §6.2: Unauthenticated public visitors (guest role) see redacted view.
+ */
+export function isTreeRedactedForUser(
+  user: { id?: string; email?: string } | null,
+  tree: FamilyTree,
+  collaborators: TreeCollaborator[] = []
+): boolean {
+  const role = getEffectiveTreeRole(user, tree, collaborators);
+  return role === 'guest';
 }

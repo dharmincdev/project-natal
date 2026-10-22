@@ -39,6 +39,29 @@ export async function POST(req: NextRequest) {
           );
         }
       }
+    } else if (event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object as import('stripe').default.Subscription;
+      const userId = subscription.metadata?.userId;
+
+      // Downgrade user profile to 'free' tier per SPEC.md §7
+      const adminClient = getSupabaseAdminClient();
+      if (adminClient) {
+        if (userId) {
+          await adminClient
+            .from('profiles')
+            .update({ tier: 'free', updated_at: new Date().toISOString() })
+            .eq('id', userId);
+        } else if (subscription.id) {
+          await adminClient
+            .from('profiles')
+            .update({ tier: 'free', updated_at: new Date().toISOString() })
+            .eq('stripe_subscription_id', subscription.id);
+        }
+      } else {
+        console.warn(
+          '[Stripe Webhook] SUPABASE_SERVICE_ROLE_KEY not configured. Simulated subscription downgrade acknowledged.'
+        );
+      }
     }
 
     return NextResponse.json({ received: true });

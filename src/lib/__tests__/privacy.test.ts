@@ -162,4 +162,27 @@ describe('Living Person Privacy Redaction (SPEC §6.1)', () => {
     expect(redactedTree.relationships[0].personAId).toBe('p-deceased');
     expect(redactedTree.relationships[0].personBId).toBe('p-living');
   });
+
+  it('respects livingPrivacyRedaction: false if explicitly configured by tree owner per SPEC.md §3.2', () => {
+    const living = mockPerson({ id: 'p-living', firstName: 'Sarah', lastName: 'Connor', birthDate: '1995-03-10' });
+    const optOutTreeData: TreeData = {
+      tree: {
+        id: 'tree-2',
+        ownerId: 'u-1',
+        name: 'Opt-out Tree',
+        slug: 'opt-out-tree',
+        description: null,
+        settings: { isPublic: true, allowClaiming: false, theme: 'light', livingPrivacyRedaction: false },
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+      people: [living],
+      relationships: [],
+    };
+
+    const result = redactTreeForPublic(optOutTreeData);
+    expect(result.people[0].firstName).toBe('Sarah');
+    expect(result.people[0].lastName).toBe('Connor');
+  });
 });
+
