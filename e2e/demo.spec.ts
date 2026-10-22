@@ -118,6 +118,13 @@ test.describe('Interactive Demo Tree Canvas', () => {
     await expect(simulateBtn).toBeVisible();
     await simulateBtn.click();
 
+    // Stop recording to enter review state deterministically
+    const stopBtn = page.getByRole('button', { name: /Stop & Review/i });
+    await stopBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    if (await stopBtn.isVisible()) {
+      await stopBtn.click();
+    }
+
     // Wait for review state
     await expect(page.getByText(/Recorded Audio Clip/i)).toBeVisible({ timeout: 10000 });
 

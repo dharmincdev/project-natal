@@ -314,12 +314,19 @@ PostgreSQL RLS is enabled on all tables:
 
 ### 8.1 Verification Pyramid
 * **Unit Tests (Vitest):**
-  * Generational layout relaxation math.
-  * Directed Acyclic Graph (DAG) cycle detection.
-  * Kinship degree resolution algorithm.
-  * GEDCOM 7.0 parsing and serialization round-trip fidelity.
+  * Generational layout relaxation math (`src/lib/__tests__/layout.test.ts`).
+  * Directed Acyclic Graph (DAG) cycle detection & LCA kinship calculations (`src/lib/__tests__/graph-invariants.test.ts`).
+  * Living individual privacy redaction engine (`src/lib/__tests__/privacy.test.ts`).
+  * Role-Based Access Control (RBAC) capability matrix (`src/lib/__tests__/permissions.test.ts`).
+  * Zod contract validation schemas for PostgreSQL types (`src/lib/__tests__/contracts.test.ts`).
+  * Stripe webhook lifecycle events & tier upgrades/downgrades (`src/lib/__tests__/stripe-webhook.test.ts`).
+  * Tree vector SVG/PNG export engine (`src/lib/__tests__/tree-export.test.ts`).
 * **End-to-End Tests (Playwright):**
-  * Automated testing across mobile, tablet, and desktop viewports (`e2e/demo.spec.ts`, `e2e/home.spec.ts`, `e2e/gedcom.spec.ts`).
+  * Core demo tree canvas, views & oral history audio vault (`e2e/demo.spec.ts`).
+  * Homepage hero, navigation, and Bento showcase (`e2e/home.spec.ts`).
+  * GEDCOM 7.0 interoperability & modal workflows (`e2e/gedcom.spec.ts`).
+  * Public tree living person privacy redaction (`e2e/privacy.spec.ts`).
+  * Adversarial graph cycle prevention & duplicate relationship validation (`e2e/graph-integrity.spec.ts`).
 * **Manual Interactive Checklist (`/qa`):**
   * 50 test cases across 10 functional suites persisted in browser storage.
   * Direct launch buttons for rapid feature verification.
@@ -327,5 +334,7 @@ PostgreSQL RLS is enabled on all tables:
 ### 8.2 CI/CD Automation (GitHub Actions)
 Every pull request to `main` must pass:
 1. `npx tsc --noEmit` (TypeScript strict mode, 0 errors).
-2. `npm run lint` (ESLint Next.js configuration).
-3. `npx playwright test` (E2E browser test suite).
+2. `npm run lint` (ESLint Next.js configuration, 0 errors).
+3. `npm run test:unit` (Vitest unit test suite).
+4. `npx playwright test` (E2E browser test suite).
+5. `npm run build` (Next.js production compilation & static page optimization).
