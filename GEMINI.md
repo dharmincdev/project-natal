@@ -1,30 +1,22 @@
-# Project Natal: Agent Engineering Rules & Guidelines
+# Project Natal: Agentic Workflow & Linear Roadmap Index
 
-You are working on **Project Natal**, a high-performance modern family tree and oral history platform.
+See [`AGENTS.md`](./AGENTS.md) for core architectural rules, tech stack constraints, and Supabase backend invariants, and [`SPEC.md`](./SPEC.md) for the authoritative product specification.
 
-## 1. Prime Directive: Spec Alignment
-* **Canonical Specification:** Always treat `SPEC.md` as the single source of truth for architectural decisions, domain models, feature boundaries, and security rules.
-* **No Spec Drift:** Never invent alternative schemas, endpoints, or data models without explicit alignment with `SPEC.md`.
+## 1. Active Linear Projects (`Project Natal` / `PRO`)
+* **Project 1 (Core Canvas & Persistence):** `PRO-5` (LocalStorage/Coordinate Auto-Save), `PRO-6` (Handle Drag Connections), `PRO-7` (Dashed Rose Spouse Edges).
+* **Project 2 (Navigation, Mobile UX & Polish):** `PRO-8` (Persistent 3-Zone Header), `PRO-9` (Mobile Viewport Overhaul), `PRO-10` (Deceased Toggle & Date Alignment), `PRO-11` (Capacity Badge Spacing), `PRO-12` (Shared Link Palette).
+* **Project 3 (Viewport Consolidation & MVP Pruning):** `PRO-13` (Remove 3D Orbit), `PRO-14` (Unified Timeline + Tracks + Year Scrubber), `PRO-15` (3D Globe Detail & Remove 2D Map Toggle).
+* **Project 4 (GEDCOM & High-Fidelity Exports):** `PRO-16` (External GEDCOM Parser), `PRO-17` (GEDCOM Round-Trip Export/Import), `PRO-18` (High-DPI PNG/SVG/PDF Export w/ Matching Lines).
+* **Project 5 (Audio Vault Reliability):** `PRO-19` (Chrome Audio Playback via Storage/Base64), `PRO-20` (Remove Simulated Voice Memory UI).
+* **Project 6 (Supabase Backend, Auth, Storage & Realtime):** `PRO-21` (Header Sign-In CTA & Auth Modal), `PRO-22` (Inspectable Cloud Sync), `PRO-23` (Collaborator Invite Emails), `PRO-27` (`@supabase/ssr` Server Client & `/auth/callback`), `PRO-28` (Granular CRUD APIs & Atomic GEDCOM RPC), `PRO-29` (Supabase Storage Buckets for Audio/Docs), `PRO-30` (Supabase Realtime Collaboration & Presence), `PRO-31` (DB Tier Capacity & Graph Triggers).
+* **Project 7 (Stripe Monetization & AI Historian):** `PRO-24` (\$5 One-Time & \$7/mo Pro Checkout Flows), `PRO-25` (AI Historian Tier Gating), `PRO-26` (AI Kinship Reasoning Engine & Webhook Verification).
 
-## 2. Technology Stack & Constraints
-* **Framework:** Next.js 16.3+ (App Router) with React 19.
-* **Language:** TypeScript in strict mode. Never use `any` when a domain type exists in `src/types/tree.ts`.
-* **Styling:** Tailwind CSS v4, `@base-ui/react`, Radix primitives, Lucide icons.
-* **Graph Engine:** `@xyflow/react` v12+. Ensure all node handle IDs and orthogonal line calculations follow `src/lib/layout.ts`.
-* **3D Visualizations:** `three` v0.185+ for 3D Orbit (`TreeOrbit3D.tsx`) and Globe (`TreeWorldGlobe.tsx`).
-* **Database & Auth:** Supabase PostgreSQL with RLS policies and GoTrue Auth.
-* **Payments:** Stripe Checkout and Webhooks.
+## 2. Agentic Execution Protocol
+1. **Before coding a ticket:** Read the relevant section of `SPEC.md` and inspect existing unit/E2E tests.
+2. **Vertical-slice implementation:** Never build a UI control without wiring its real persistence/backend handler (`src/lib/supabase/`, `src/app/api/`, or `src/lib/storage.ts`).
+3. **Verification gate before completing any ticket:**
+   * `npx tsc --noEmit` (0 errors)
+   * `npm run test:unit` (all Vitest suites green)
+   * `npx playwright test` (E2E verification on `http://localhost:3001`)
+   * Update the corresponding `/qa` test case definition in `src/data/qa-test-cases.ts` if MVP scope changed.
 
-## 3. Engineering & Code Quality Standards
-* **Type Safety:** Always run `npx tsc --noEmit` after modifying code. All changes must compile with 0 errors.
-* **Testing:** Run Playwright tests (`npx playwright test`) to ensure zero regressions on existing E2E user flows.
-* **Graceful Degradation (Offline-First):** Always preserve local fallback (`localStorage` in `src/lib/storage.ts`) so the app runs smoothly even when Supabase, Stripe, or OpenAI API keys are not present in `.env.local`.
-* **Graph Invariant Rule:** All parent-child mutations must be validated against cycles (Directed Acyclic Graph invariant). A person can never be an ancestor of themselves.
-* **Living Person Privacy:** On public `/t/[slug]` views, living individuals must be redacted (`"Living Relative"`, masked birth dates) according to `SPEC.md` Section 6.1.
-
-## 4. Git & Commits
-* Always author Git commits with:
-  ```bash
-  GIT_CONFIG_GLOBAL=/dev/null git -c user.name="dharmincdev" -c user.email="dharminc.dev@gmail.com" commit -m "<type>: <description>"
-  ```
-* Write clean, conventional commit messages (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`).
