@@ -15,14 +15,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { parseGedcom, GedcomParseResult } from '@/lib/gedcom/parser';
+import { exportToGedcom } from '@/lib/gedcom/exporter';
+import { getInitialSmithTreeData } from '@/data/fixtures/smith-family';
 import { importGedcomTree } from '@/lib/storage';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Users, Network, ArrowRight } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
 
 interface ImportGedcomDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onImportSuccess?: (treeSlug: string) => void;
 }
+
+const COMPATIBLE_PLATFORMS = ['Ancestry.com', 'MyHeritage', 'FamilySearch', '23andMe', 'Gramps'];
 
 export default function ImportGedcomDialog({
   isOpen,
@@ -39,22 +43,24 @@ export default function ImportGedcomDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  const handleFileChange = async (selectedFile: File) => {
-    if (!selectedFile.name.toLowerCase().endsWith('.ged')) {
-      setErrorMessage('Please upload a valid .ged file (standard GEDCOM format).');
-      return;
-    }
-
-    setFile(selectedFile);
+  const processGedcomText = (text: string, defaultName: string, sourceFile?: File) => {
     setErrorMessage(null);
     setIsParsing(true);
 
     try {
-      const text = await selectedFile.text();
-      const defaultName = selectedFile.name.replace(/\.ged$/i, '').trim();
-      setTreeName(defaultName);
-
       const result = parseGedcom(text, { treeName: defaultName });
+      if (result.stats.individualCount === 0) {
+        setErrorMessage('No valid individual records (0 @I1@ INDI) found in this GEDCOM file.');
+        setParseResult(null);
+        return;
+      }
+      if (sourceFile) {
+        setFile(sourceFile);
+      } else {
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        setFile(new File([blob], `${defaultName.toLowerCase().replace(/\s+/g, '-')}.ged`, { type: 'text/plain' }));
+      }
+      setTreeName(result.treeData.tree.name || defaultName);
       setParseResult(result);
     } catch (err) {
       console.error('GEDCOM parse error:', err);
@@ -63,6 +69,23 @@ export default function ImportGedcomDialog({
     } finally {
       setIsParsing(false);
     }
+  };
+
+  const handleFileChange = async (selectedFile: File) => {
+    if (!selectedFile.name.toLowerCase().endsWith('.ged')) {
+      setErrorMessage('Please upload a valid .ged file (standard GEDCOM format).');
+      return;
+    }
+
+    const text = await selectedFile.text();
+    const defaultName = selectedFile.name.replace(/\.ged$/i, '').trim() || 'Imported Family Tree';
+    processGedcomText(text, defaultName, selectedFile);
+  };
+
+  const handleLoadSampleGedcom = () => {
+    const sampleTree = getInitialSmithTreeData();
+    const sampleGedcom = exportToGedcom(sampleTree);
+    processGedcomText(sampleGedcom, 'Sample 3-Gen Lineage');
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -139,29 +162,51 @@ export default function ImportGedcomDialog({
         <div className="space-y-4 py-2">
           {/* Drag & Drop Area */}
           {!parseResult ? (
-            <div
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 bg-muted/20"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".ged"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) {
-                    handleFileChange(e.target.files[0]);
-                  }
-                }}
-              />
-              <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                <UploadCloud className="w-6 h-6" />
+            <div className="space-y-3">
+              <div
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 bg-muted/20"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".ged"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      handleFileChange(e.target.files[0]);
+                    }
+                  }}
+                />
+                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  <UploadCloud className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Click to browse or drop your .ged file here</p>
+                  <p className="text-xs text-muted-foreground mt-1">Supports GEDCOM 5.5.1 and 7.0 standards</p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                  {COMPATIBLE_PLATFORMS.map((platform) => (
+                    <Badge key={platform} variant="secondary" className="text-[10px] font-normal px-2 py-0.5">
+                      {platform}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Click to browse or drop your .ged file here</p>
-                <p className="text-xs text-muted-foreground mt-1">Supports GEDCOM 5.5.1 and 7.0 standards</p>
+
+              <div className="flex items-center justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadSampleGedcom}
+                  className="text-xs h-8 gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  Load Sample GEDCOM (3 Generations)
+                </Button>
               </div>
             </div>
           ) : (
@@ -172,9 +217,12 @@ export default function ImportGedcomDialog({
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2 flex-wrap">
                       {file?.name}
                       <Badge variant="outline" className="text-[10px] font-normal">
+                        GEDCOM {parseResult.stats.gedcomVersion || '7.0'}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] font-normal text-emerald-600 border-emerald-500/30">
                         Ready to Import
                       </Badge>
                     </h4>
@@ -197,21 +245,21 @@ export default function ImportGedcomDialog({
               {/* Statistics preview */}
               <div className="grid grid-cols-3 gap-2 pt-2 border-t">
                 <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <div className="text-lg font-black text-foreground">
+                  <div className="text-lg font-black text-foreground" data-testid="gedcom-individual-count">
                     {parseResult.stats.individualCount}
                   </div>
                   <div className="text-[11px] text-muted-foreground font-medium">Individuals</div>
                 </div>
 
                 <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <div className="text-lg font-black text-foreground">
+                  <div className="text-lg font-black text-foreground" data-testid="gedcom-family-count">
                     {parseResult.stats.familyCount}
                   </div>
                   <div className="text-[11px] text-muted-foreground font-medium">Families</div>
                 </div>
 
                 <div className="rounded-lg bg-muted/50 p-2 text-center">
-                  <div className="text-lg font-black text-foreground">
+                  <div className="text-lg font-black text-foreground" data-testid="gedcom-relationship-count">
                     {parseResult.stats.relationshipCount}
                   </div>
                   <div className="text-[11px] text-muted-foreground font-medium">Connections</div>

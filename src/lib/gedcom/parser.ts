@@ -7,6 +7,7 @@ export interface GedcomParseResult {
     individualCount: number;
     familyCount: number;
     relationshipCount: number;
+    gedcomVersion?: string;
     warnings: string[];
   };
 }
@@ -17,6 +18,21 @@ interface GedcomLine {
   tag: string;
   value?: string;
 }
+
+const MONTHS_MAP: Record<string, string> = {
+  JAN: '01',
+  FEB: '02',
+  MAR: '03',
+  APR: '04',
+  MAY: '05',
+  JUN: '06',
+  JUL: '07',
+  AUG: '08',
+  SEP: '09',
+  OCT: '10',
+  NOV: '11',
+  DEC: '12',
+};
 
 /**
  * Parses raw GEDCOM text (supporting 5.5.1 and 7.0 standards) into individual line tokens.
@@ -51,14 +67,28 @@ function parseGedcomLines(text: string): GedcomLine[] {
 
 /**
  * Normalizes genealogical date representations (e.g., "12 MAY 1980", "ABT 1950", "BET 1910 AND 1915")
- * into a clean ISO-like or readable string.
+ * into a clean ISO YYYY-MM-DD or readable date string.
  */
 function cleanGedcomDate(rawDate?: string): string | null {
   if (!rawDate) return null;
   let d = rawDate.trim();
-  // Strip standard genealogical modifiers if simple year extract is preferred or format nicely
+  // Strip standard genealogical modifiers
   d = d.replace(/^(ABT|CAL|EST|AFT|BEF|FROM|TO|BET)\s+/i, '');
-  return d || null;
+  d = d.split(/\s+AND\s+/i)[0].trim();
+  if (!d) return null;
+
+  // Convert exact "DD MMM YYYY" (e.g. "12 MAY 1945") into ISO "1945-05-12"
+  const dmyMatch = d.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const mon = MONTHS_MAP[dmyMatch[2].toUpperCase()];
+    const yr = dmyMatch[3];
+    if (mon) {
+      return `${yr}-${mon}-${day}`;
+    }
+  }
+
+  return d;
 }
 
 /**
@@ -95,6 +125,7 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
   const now = new Date().toISOString();
   const treeId = `tree-${uuidv4().slice(0, 8)}`;
   let treeName = options?.treeName || 'Imported GEDCOM Tree';
+  let gedcomVersion = '7.0';
 
   // State trackers
   const indiMap = new Map<string, {
@@ -102,11 +133,13 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
     firstName: string;
     lastName: string;
     maidenName?: string;
+    nickname?: string;
     gender?: Gender;
     birthDate?: string | null;
     deathDate?: string | null;
     birthPlace?: string | null;
     bio?: string | null;
+    customFields: Record<string, string>;
     milestones: Milestone[];
   }>();
 
@@ -114,7 +147,9 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
     xref: string;
     husb?: string;
     wife?: string;
+    parents: string[];
     children: string[];
+    unmarried?: boolean;
     marriageDate?: string | null;
     marriagePlace?: string | null;
   }>();
@@ -122,7 +157,7 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
   let currentIndi: ReturnType<typeof indiMap.get> | null = null;
   let currentFam: ReturnType<typeof famMap.get> | null = null;
   let currentContext: 'INDI' | 'FAM' | 'HEAD' | null = null;
-  let subContext: 'BIRT' | 'DEAT' | 'MARR' | 'NAME' | null = null;
+  let subContext: 'BIRT' | 'DEAT' | 'MARR' | 'NAME' | 'NOTE' | 'GEDC' | null = null;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -132,24 +167,31 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
       currentFam = null;
       subContext = null;
 
+      const isIndi = line.tag === 'INDI' || line.value === 'INDI';
+      const isFam = line.tag === 'FAM' || line.value === 'FAM';
+
       if (line.tag === 'HEAD') {
         currentContext = 'HEAD';
-      } else if (line.value === 'INDI' && line.xref) {
+      } else if (isIndi && (line.xref || line.value)) {
+        const xref = line.xref || (line.tag === 'INDI' ? line.value! : `@I${indiMap.size + 1}@`);
         currentContext = 'INDI';
         currentIndi = {
-          xref: line.xref,
+          xref,
           firstName: 'Unknown',
           lastName: '',
+          customFields: {},
           milestones: [],
         };
-        indiMap.set(line.xref, currentIndi);
-      } else if (line.value === 'FAM' && line.xref) {
+        indiMap.set(xref, currentIndi);
+      } else if (isFam && (line.xref || line.value)) {
+        const xref = line.xref || (line.tag === 'FAM' ? line.value! : `@F${famMap.size + 1}@`);
         currentContext = 'FAM';
         currentFam = {
-          xref: line.xref,
+          xref,
+          parents: [],
           children: [],
         };
-        famMap.set(line.xref, currentFam);
+        famMap.set(xref, currentFam);
       } else {
         currentContext = null;
       }
@@ -158,10 +200,20 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
 
     // Inside HEAD
     if (currentContext === 'HEAD') {
-      if (line.tag === 'NAME' || line.tag === 'TITL' || line.tag === 'FILE') {
-        if (line.value && !options?.treeName) {
-          treeName = line.value.replace(/\.ged$/i, '').trim();
+      if (line.level === 1) {
+        subContext = line.tag === 'GEDC' ? 'GEDC' : null;
+        if (line.tag === 'NOTE' && line.value && !options?.treeName) {
+          const exportedMatch = line.value.match(/^(.*?)\s+exported from Project Natal$/i);
+          if (exportedMatch && exportedMatch[1].trim()) {
+            treeName = exportedMatch[1].trim();
+          }
+        } else if ((line.tag === 'TITL' || line.tag === 'FILE') && line.value && !options?.treeName) {
+          if (treeName === 'Imported GEDCOM Tree') {
+            treeName = line.value.replace(/\.ged$/i, '').trim();
+          }
         }
+      } else if (line.level === 2 && subContext === 'GEDC' && line.tag === 'VERS' && line.value) {
+        gedcomVersion = line.value.trim();
       }
       continue;
     }
@@ -171,10 +223,13 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
       if (line.level === 1) {
         subContext = null;
         if (line.tag === 'NAME') {
-          const { firstName, lastName } = parseGedcomName(line.value);
+          const { firstName, lastName, maidenName } = parseGedcomName(line.value);
           currentIndi.firstName = firstName;
           currentIndi.lastName = lastName;
+          if (maidenName) currentIndi.maidenName = maidenName;
           subContext = 'NAME';
+        } else if (line.tag === 'NICK' && line.value) {
+          currentIndi.nickname = line.value;
         } else if (line.tag === 'SEX') {
           const s = line.value?.toUpperCase();
           if (s === 'M') currentIndi.gender = 'male';
@@ -184,13 +239,28 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
           subContext = 'BIRT';
         } else if (line.tag === 'DEAT') {
           subContext = 'DEAT';
+          if (line.value?.toUpperCase() === 'Y' && !currentIndi.deathDate) {
+            currentIndi.deathDate = 'Unknown';
+          }
+        } else if (line.tag === 'OCCU' && line.value) {
+          currentIndi.customFields.occupation = line.value;
         } else if (line.tag === 'NOTE') {
-          currentIndi.bio = (currentIndi.bio ? currentIndi.bio + '\n' : '') + (line.value || '');
+          subContext = 'NOTE';
+          if (line.value) {
+            currentIndi.bio = (currentIndi.bio ? currentIndi.bio + '\n' : '') + line.value;
+          }
         }
       } else if (line.level === 2) {
-        if (subContext === 'NAME' && line.tag === '_MARNM') {
-          // Some software marks married name or maiden name
-          currentIndi.maidenName = line.value;
+        if (subContext === 'NAME') {
+          if (line.tag === 'GIVN' && line.value) {
+            currentIndi.firstName = line.value;
+          } else if (line.tag === 'SURN' && line.value) {
+            currentIndi.lastName = line.value;
+          } else if ((line.tag === '_MARNM' || line.tag === '_MAIDEN') && line.value) {
+            currentIndi.maidenName = line.value;
+          } else if (line.tag === 'NICK' && line.value) {
+            currentIndi.nickname = line.value;
+          }
         } else if (subContext === 'BIRT') {
           if (line.tag === 'DATE') {
             currentIndi.birthDate = cleanGedcomDate(line.value);
@@ -200,6 +270,12 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
         } else if (subContext === 'DEAT') {
           if (line.tag === 'DATE') {
             currentIndi.deathDate = cleanGedcomDate(line.value);
+          }
+        } else if (subContext === 'NOTE') {
+          if (line.tag === 'CONT') {
+            currentIndi.bio = (currentIndi.bio || '') + '\n' + (line.value || '');
+          } else if (line.tag === 'CONC') {
+            currentIndi.bio = (currentIndi.bio || '') + (line.value || '');
           }
         }
       }
@@ -211,13 +287,23 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
       if (line.level === 1) {
         subContext = null;
         if (line.tag === 'HUSB' && line.value) {
-          currentFam.husb = line.value;
+          if (!currentFam.husb) currentFam.husb = line.value;
+          if (!currentFam.parents.includes(line.value)) {
+            currentFam.parents.push(line.value);
+          }
         } else if (line.tag === 'WIFE' && line.value) {
-          currentFam.wife = line.value;
+          if (!currentFam.wife) currentFam.wife = line.value;
+          if (!currentFam.parents.includes(line.value)) {
+            currentFam.parents.push(line.value);
+          }
         } else if (line.tag === 'CHIL' && line.value) {
-          currentFam.children.push(line.value);
+          if (!currentFam.children.includes(line.value)) {
+            currentFam.children.push(line.value);
+          }
         } else if (line.tag === 'MARR') {
           subContext = 'MARR';
+        } else if (line.tag === '_UNMARRIED' && line.value?.toUpperCase() === 'Y') {
+          currentFam.unmarried = true;
         }
       } else if (line.level === 2 && subContext === 'MARR') {
         if (line.tag === 'DATE') {
@@ -269,14 +355,14 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
       firstName: indi.firstName,
       lastName: indi.lastName,
       maidenName: indi.maidenName || null,
-      nickname: null,
+      nickname: indi.nickname || null,
       gender: indi.gender || null,
       birthDate: indi.birthDate || null,
       deathDate: indi.deathDate || null,
       birthPlace: indi.birthPlace || null,
       photoUrl: null,
       bio: indi.bio || null,
-      customFields: {},
+      customFields: indi.customFields,
       milestones: personMilestones,
       positionX: 0,
       positionY: 0,
@@ -288,21 +374,26 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
   // Convert Family Relationships
   const relationships: Relationship[] = [];
   const processedSpousePairs = new Set<string>();
+  const processedParentChildPairs = new Set<string>();
+  const processedSiblingPairs = new Set<string>();
 
   for (const fam of Array.from(famMap.values())) {
-    const husbId = fam.husb ? xrefToNatalId.get(fam.husb) : undefined;
-    const wifeId = fam.wife ? xrefToNatalId.get(fam.wife) : undefined;
+    const parentIds = fam.parents
+      .map((xref) => xrefToNatalId.get(xref))
+      .filter((id): id is string => Boolean(id));
 
-    // 1. Spouse connection
-    if (husbId && wifeId) {
-      const pairKey = [husbId, wifeId].sort().join(':');
+    // 1. Spouse connection (when two parents form a married couple in this FAM)
+    if (parentIds.length >= 2 && !fam.unmarried) {
+      const p1Id = parentIds[0];
+      const p2Id = parentIds[1];
+      const pairKey = [p1Id, p2Id].sort().join(':');
       if (!processedSpousePairs.has(pairKey)) {
         processedSpousePairs.add(pairKey);
         relationships.push({
           id: uuidv4(),
           treeId,
-          personAId: husbId,
-          personBId: wifeId,
+          personAId: p1Id,
+          personBId: p2Id,
           type: 'spouse',
           subtype: 'biological',
           startDate: fam.marriageDate || null,
@@ -320,45 +411,63 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
             location: fam.marriagePlace || undefined,
             submittedBy: 'self',
           };
-          const p1 = people.find((p) => p.id === husbId);
-          const p2 = people.find((p) => p.id === wifeId);
+          const p1 = people.find((p) => p.id === p1Id);
+          const p2 = people.find((p) => p.id === p2Id);
           if (p1) p1.milestones.push(mMilestone);
-          if (p2) p2.milestones.push(mMilestone);
+          if (p2) p2.milestones.push({ ...mMilestone, id: uuidv4() });
         }
       }
     }
 
-    // 2. Parent-child connections
-    for (const childXref of fam.children) {
-      const childId = xrefToNatalId.get(childXref);
-      if (!childId) continue;
+    // 2. Parent-child connections (supports married couples, co-parents, and single parents)
+    const childIds = fam.children
+      .map((xref) => xrefToNatalId.get(xref))
+      .filter((id): id is string => Boolean(id));
 
-      if (husbId) {
-        relationships.push({
-          id: uuidv4(),
-          treeId,
-          personAId: husbId,
-          personBId: childId,
-          type: 'parent_child',
-          subtype: 'biological',
-          startDate: null,
-          endDate: null,
-          createdAt: now,
-        });
+    for (const childId of childIds) {
+      for (const parentId of parentIds) {
+        if (parentId === childId) continue;
+        const pcKey = `${parentId}->${childId}`;
+        if (!processedParentChildPairs.has(pcKey)) {
+          processedParentChildPairs.add(pcKey);
+          relationships.push({
+            id: uuidv4(),
+            treeId,
+            personAId: parentId,
+            personBId: childId,
+            type: 'parent_child',
+            subtype: 'biological',
+            startDate: null,
+            endDate: null,
+            createdAt: now,
+          });
+        }
       }
+    }
 
-      if (wifeId) {
-        relationships.push({
-          id: uuidv4(),
-          treeId,
-          personAId: wifeId,
-          personBId: childId,
-          type: 'parent_child',
-          subtype: 'biological',
-          startDate: null,
-          endDate: null,
-          createdAt: now,
-        });
+    // 3. Standalone sibling connections (when a FAM groups siblings without parent records)
+    if (parentIds.length === 0 && childIds.length >= 2) {
+      for (let i = 0; i < childIds.length; i++) {
+        for (let j = i + 1; j < childIds.length; j++) {
+          const sibA = childIds[i];
+          const sibB = childIds[j];
+          if (sibA === sibB) continue;
+          const sibKey = [sibA, sibB].sort().join(':');
+          if (!processedSiblingPairs.has(sibKey)) {
+            processedSiblingPairs.add(sibKey);
+            relationships.push({
+              id: uuidv4(),
+              treeId,
+              personAId: sibA,
+              personBId: sibB,
+              type: 'sibling',
+              subtype: 'biological',
+              startDate: null,
+              endDate: null,
+              createdAt: now,
+            });
+          }
+        }
       }
     }
   }
@@ -396,6 +505,7 @@ export function parseGedcom(gedcomText: string, options?: { treeName?: string; o
       individualCount: people.length,
       familyCount: famMap.size,
       relationshipCount: relationships.length,
+      gedcomVersion,
       warnings,
     },
   };
