@@ -172,5 +172,37 @@ test.describe('Interactive Demo Tree Canvas', () => {
     // Verify new voice memory is listed in vault
     await expect(page.getByText(/Voice Memory of Robert Smith/i)).toBeVisible();
   });
+
+  test('should open AuthModal from Sign In CTA, create account, and inspect Cloud Sync & Realtime badge (PRO-21, PRO-22, PRO-30)', async ({ page }) => {
+    await page.goto('/demo');
+    await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
+
+    // PRO-22: Verify inspectable Cloud Sync badge in header
+    const syncBadge = page.getByTestId('cloud-sync-badge');
+    await expect(syncBadge).toBeVisible();
+    await syncBadge.click();
+    await expect(page.getByTestId('cloud-sync-inspector')).toBeVisible();
+    await expect(page.getByTestId('cloud-sync-inspector')).toContainText(/Persistence & Cloud Sync/i);
+    await expect(page.getByTestId('cloud-sync-inspector')).toContainText(/Live/i);
+    await page.keyboard.press('Escape');
+
+    // PRO-21: Click Sign In button in top-right header (TC-6.1, TC-6.2)
+    const signInBtn = page.getByTestId('header-signin-btn');
+    await expect(signInBtn).toBeVisible();
+    await signInBtn.click();
+
+    await expect(page.getByRole('heading', { name: /Welcome to Project Natal/i })).toBeVisible();
+    const createAccountTab = page.getByRole('tab', { name: /Create Account/i });
+    await expect(createAccountTab).toBeVisible();
+    await createAccountTab.click();
+
+    await page.locator('#auth-name').fill('Alex Smith');
+    await page.locator('#auth-email').fill('tester@natalfamily.com');
+    await page.locator('#auth-password').fill('TestPass123!');
+    await page.getByRole('button', { name: /Create Account/i }).click();
+
+    // Verify top-right header updates to active user badge showing Alex Smith
+    await expect(page.getByTestId('user-session-badge')).toContainText('Alex Smith');
+  });
 });
 

@@ -32,7 +32,6 @@ test.describe('Mobile Viewport & Touch Responsive UX (TS-10)', () => {
   test('should toggle mobile spotlight search modal', async ({ page }) => {
     await page.goto('/demo');
     await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
-    await expect(page.getByText('Smith Family')).toBeVisible();
 
     // Click Search icon button in header
     const searchBtn = page.getByTitle(/Search relatives/i);

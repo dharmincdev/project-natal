@@ -1,11 +1,12 @@
+import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from './client';
-import { 
-  FamilyTree, 
-  Person, 
-  Relationship, 
-  TreeData, 
-  TreeCollaborator, 
-  CollaboratorRole, 
+import {
+  FamilyTree,
+  Person,
+  Relationship,
+  TreeData,
+  TreeCollaborator,
+  CollaboratorRole,
   CollaboratorStatus,
   Gender,
   Milestone,
@@ -13,6 +14,7 @@ import {
   RelationshipType,
   RelationshipSubtype,
 } from '@/types/tree';
+import { validateRelationship } from '@/lib/tree-utils';
 
 // Row types matching Supabase PostgreSQL tables
 export type ProfileRow = {
@@ -35,6 +37,7 @@ export type FamilyTreeRow = {
     isPublic: boolean;
     allowClaiming: boolean;
     theme: string;
+    livingPrivacyRedaction?: boolean;
   };
   created_at: string;
   updated_at: string;
@@ -112,6 +115,31 @@ export function rowToPerson(row: PersonRow): Person {
   };
 }
 
+export function personToRow(p: Person, treeId?: string, nowIso?: string): PersonRow {
+  const now = nowIso || new Date().toISOString();
+  return {
+    id: p.id,
+    tree_id: treeId || p.treeId,
+    first_name: p.firstName,
+    last_name: p.lastName || '',
+    maiden_name: p.maidenName || null,
+    nickname: p.nickname || null,
+    gender: p.gender || null,
+    birth_date: p.birthDate || null,
+    death_date: p.deathDate || null,
+    birth_place: p.birthPlace || null,
+    photo_url: p.photoUrl || null,
+    bio: p.bio || null,
+    custom_fields: p.customFields || {},
+    milestones: p.milestones || [],
+    attachments: p.attachments || [],
+    position_x: p.positionX || 0,
+    position_y: p.positionY || 0,
+    created_at: p.createdAt || now,
+    updated_at: now,
+  };
+}
+
 export function rowToRelationship(row: RelationshipRow): Relationship {
   return {
     id: row.id,
@@ -126,11 +154,33 @@ export function rowToRelationship(row: RelationshipRow): Relationship {
   };
 }
 
+export function relationshipToRow(r: Relationship, treeId?: string, nowIso?: string): RelationshipRow {
+  const now = nowIso || new Date().toISOString();
+  return {
+    id: r.id,
+    tree_id: treeId || r.treeId,
+    person_a_id: r.personAId,
+    person_b_id: r.personBId,
+    type: r.type,
+    subtype: r.subtype,
+    start_date: r.startDate || null,
+    end_date: r.endDate || null,
+    created_at: r.createdAt || now,
+  };
+}
+
+function resolveClient(clientOverride?: SupabaseClient | null): SupabaseClient | null {
+  return clientOverride ?? getSupabaseBrowserClient();
+}
+
 /**
  * Fetch all family trees belonging to a user from Supabase.
  */
-export async function fetchUserTreesFromSupabase(userId: string): Promise<FamilyTree[]> {
-  const client = getSupabaseBrowserClient();
+export async function fetchUserTreesFromSupabase(
+  userId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<FamilyTree[]> {
+  const client = resolveClient(clientOverride);
   if (!client) return [];
 
   const { data, error } = await client
@@ -150,8 +200,11 @@ export async function fetchUserTreesFromSupabase(userId: string): Promise<Family
 /**
  * Fetch a complete TreeData (tree + people + relationships) by slug or ID.
  */
-export async function fetchTreeDataFromSupabase(slugOrId: string): Promise<TreeData | null> {
-  const client = getSupabaseBrowserClient();
+export async function fetchTreeDataFromSupabase(
+  slugOrId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<TreeData | null> {
+  const client = resolveClient(clientOverride);
   if (!client) return null;
 
   // 1. Fetch tree
@@ -197,17 +250,241 @@ export async function fetchTreeDataFromSupabase(slugOrId: string): Promise<TreeD
 }
 
 /**
- * Saves a complete TreeData to Supabase.
+ * Granular CRUD: Upsert a single person in Supabase (PRO-28).
  */
-export async function saveTreeDataToSupabase(treeData: TreeData, userId: string): Promise<boolean> {
-  const client = getSupabaseBrowserClient();
+export async function upsertPersonInSupabase(
+  person: Person,
+  clientOverride?: SupabaseClient | null
+): Promise<Person | null> {
+  const client = resolveClient(clientOverride);
+  if (!client) return null;
+
+  const row = personToRow(person);
+  const { data, error } = await client
+    .from('people')
+    .upsert(row, { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error upserting person in Supabase:', error);
+    return null;
+  }
+
+  return data ? rowToPerson(data as PersonRow) : person;
+}
+
+/**
+ * Granular CRUD: Update dragged node coordinates in Supabase (PRO-28).
+ */
+export async function updateNodePositionsInSupabase(
+  treeId: string,
+  positions: Array<{
+    id: string;
+    positionX: number;
+    positionY: number;
+    customFields?: Record<string, string>;
+  }>,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
   if (!client) return false;
 
   const now = new Date().toISOString();
+  for (const pos of positions) {
+    const updatePayload: Record<string, unknown> = {
+      position_x: pos.positionX,
+      position_y: pos.positionY,
+      updated_at: now,
+    };
+    if (pos.customFields) {
+      updatePayload.custom_fields = pos.customFields;
+    }
 
-  // 1. Upsert tree
-  const treeRow: FamilyTreeRow = {
+    const { error } = await client
+      .from('people')
+      .update(updatePayload)
+      .eq('id', pos.id)
+      .eq('tree_id', treeId);
+
+    if (error) {
+      console.error('Error updating node position in Supabase:', error);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Granular CRUD: Delete a single person (and cascade relationships) from Supabase (PRO-28).
+ */
+export async function deletePersonFromSupabase(
+  treeId: string,
+  personId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
+  if (!client) return false;
+
+  // Delete relationships referencing this person first
+  await client
+    .from('relationships')
+    .delete()
+    .eq('tree_id', treeId)
+    .or(`person_a_id.eq.${personId},person_b_id.eq.${personId}`);
+
+  const { error } = await client
+    .from('people')
+    .delete()
+    .eq('id', personId)
+    .eq('tree_id', treeId);
+
+  if (error) {
+    console.error('Error deleting person from Supabase:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Granular CRUD: Create a validated relationship in Supabase (PRO-28).
+ */
+export async function createRelationshipInSupabase(
+  relationship: Relationship,
+  existingRelationships: Relationship[] = [],
+  clientOverride?: SupabaseClient | null
+): Promise<Relationship | null> {
+  if (existingRelationships.length > 0) {
+    const check = validateRelationship(relationship, existingRelationships);
+    if (!check.isValid) {
+      throw new Error(check.error);
+    }
+  } else if (relationship.personAId === relationship.personBId) {
+    throw new Error('CYCLE_DETECTED: Person cannot be ancestor or relative of themselves.');
+  }
+
+  const client = resolveClient(clientOverride);
+  if (!client) return null;
+
+  const row = relationshipToRow(relationship);
+  const { data, error } = await client
+    .from('relationships')
+    .upsert(row, { onConflict: 'id' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating relationship in Supabase:', error);
+    return null;
+  }
+
+  return data ? rowToRelationship(data as RelationshipRow) : relationship;
+}
+
+/**
+ * Granular CRUD: Delete a single relationship from Supabase (PRO-28).
+ */
+export async function deleteRelationshipFromSupabase(
+  treeId: string,
+  relationshipId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
+  if (!client) return false;
+
+  const { error } = await client
+    .from('relationships')
+    .delete()
+    .eq('id', relationshipId)
+    .eq('tree_id', treeId);
+
+  if (error) {
+    console.error('Error deleting relationship from Supabase:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Granular CRUD: Delete an entire family tree from Supabase (PRO-28).
+ */
+export async function deleteTreeFromSupabase(
+  treeId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
+  if (!client) return false;
+
+  const { error } = await client.from('family_trees').delete().eq('id', treeId);
+  if (error) {
+    console.error('Error deleting tree from Supabase:', error);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Atomic GEDCOM Import via PostgreSQL RPC `import_gedcom_tree` (PRO-28).
+ */
+export async function importGedcomTreeToSupabase(
+  treeData: TreeData,
+  userId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
+  if (!client) return false;
+
+  const now = new Date().toISOString();
+  const pTree = {
     id: treeData.tree.id,
+    owner_id: userId,
+    name: treeData.tree.name,
+    slug: treeData.tree.slug,
+    description: treeData.tree.description,
+    settings: treeData.tree.settings,
+  };
+  const pPeople = treeData.people.map((p) => personToRow(p, treeData.tree.id, now));
+  const pRelationships = treeData.relationships.map((r) =>
+    relationshipToRow(r, treeData.tree.id, now)
+  );
+
+  const { error } = await client.rpc('import_gedcom_tree', {
+    p_tree: pTree,
+    p_people: pPeople,
+    p_relationships: pRelationships,
+  });
+
+  if (!error) {
+    return true;
+  }
+
+  // Fallback to explicit delete + insert reconciliation if RPC migration has not yet been applied
+  return saveTreeDataToSupabase(treeData, userId, client);
+}
+
+/**
+ * Synchronizes TreeData to Supabase with full SQL deletion reconciliation (PRO-28).
+ * Ensures deleted people and deleted relationships are removed from PostgreSQL
+ * rather than leaving orphaned rows via blind .upsert().
+ */
+export async function saveTreeDataToSupabase(
+  treeData: TreeData,
+  userId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
+  if (!client) return false;
+
+  const now = new Date().toISOString();
+  const treeId = treeData.tree.id;
+
+  // 1. Upsert tree metadata
+  const treeRow: FamilyTreeRow = {
+    id: treeId,
     owner_id: userId,
     name: treeData.tree.name,
     slug: treeData.tree.slug,
@@ -226,29 +503,53 @@ export async function saveTreeDataToSupabase(treeData: TreeData, userId: string)
     return false;
   }
 
-  // 2. Upsert people
+  // 2. Reconcile deleted relationships in SQL
+  const { data: existingRelRows } = await client
+    .from('relationships')
+    .select('id')
+    .eq('tree_id', treeId);
+
+  if (existingRelRows && existingRelRows.length > 0) {
+    const activeRelIds = new Set(treeData.relationships.map((r) => r.id));
+    const removedRelIds = (existingRelRows as Array<{ id: string }>)
+      .map((r) => r.id)
+      .filter((id) => !activeRelIds.has(id));
+
+    if (removedRelIds.length > 0) {
+      await client
+        .from('relationships')
+        .delete()
+        .eq('tree_id', treeId)
+        .in('id', removedRelIds);
+    }
+  }
+
+  // 3. Reconcile deleted people in SQL
+  const { data: existingPeopleRows } = await client
+    .from('people')
+    .select('id')
+    .eq('tree_id', treeId);
+
+  if (existingPeopleRows && existingPeopleRows.length > 0) {
+    const activePersonIds = new Set(treeData.people.map((p) => p.id));
+    const removedPersonIds = (existingPeopleRows as Array<{ id: string }>)
+      .map((p) => p.id)
+      .filter((id) => !activePersonIds.has(id));
+
+    if (removedPersonIds.length > 0) {
+      await client
+        .from('people')
+        .delete()
+        .eq('tree_id', treeId)
+        .in('id', removedPersonIds);
+    }
+  }
+
+  // 4. Upsert active people
   if (treeData.people.length > 0) {
-    const peopleRows: PersonRow[] = treeData.people.map((p) => ({
-      id: p.id,
-      tree_id: treeData.tree.id,
-      first_name: p.firstName,
-      last_name: p.lastName || '',
-      maiden_name: p.maidenName || null,
-      nickname: p.nickname || null,
-      gender: p.gender || null,
-      birth_date: p.birthDate || null,
-      death_date: p.deathDate || null,
-      birth_place: p.birthPlace || null,
-      photo_url: p.photoUrl || null,
-      bio: p.bio || null,
-      custom_fields: p.customFields || {},
-      milestones: p.milestones || [],
-      attachments: p.attachments || [],
-      position_x: p.positionX || 0,
-      position_y: p.positionY || 0,
-      created_at: p.createdAt || now,
-      updated_at: now,
-    }));
+    const peopleRows: PersonRow[] = treeData.people.map((p) =>
+      personToRow(p, treeId, now)
+    );
 
     const { error: peopleError } = await client
       .from('people')
@@ -260,19 +561,11 @@ export async function saveTreeDataToSupabase(treeData: TreeData, userId: string)
     }
   }
 
-  // 3. Upsert relationships
+  // 5. Upsert active relationships
   if (treeData.relationships.length > 0) {
-    const relRows: RelationshipRow[] = treeData.relationships.map((r) => ({
-      id: r.id,
-      tree_id: treeData.tree.id,
-      person_a_id: r.personAId,
-      person_b_id: r.personBId,
-      type: r.type,
-      subtype: r.subtype,
-      start_date: r.startDate || null,
-      end_date: r.endDate || null,
-      created_at: r.createdAt || now,
-    }));
+    const relRows: RelationshipRow[] = treeData.relationships.map((r) =>
+      relationshipToRow(r, treeId, now)
+    );
 
     const { error: relError } = await client
       .from('relationships')
@@ -321,16 +614,21 @@ export function rowToTreeCollaborator(row: TreeCollaboratorRow): TreeCollaborato
 /**
  * Fetch all collaborators for a family tree from Supabase.
  */
-export async function fetchTreeCollaboratorsFromSupabase(treeId: string): Promise<TreeCollaborator[]> {
-  const client = getSupabaseBrowserClient();
+export async function fetchTreeCollaboratorsFromSupabase(
+  treeId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<TreeCollaborator[]> {
+  const client = resolveClient(clientOverride);
   if (!client) return [];
 
   const { data, error } = await client
     .from('tree_collaborators')
-    .select(`
+    .select(
+      `
       *,
       profiles:user_id (name, avatar_url)
-    `)
+    `
+    )
     .eq('tree_id', treeId)
     .order('created_at', { ascending: true });
 
@@ -349,9 +647,10 @@ export async function inviteCollaboratorToSupabase(
   treeId: string,
   email: string,
   role: CollaboratorRole,
-  invitedBy: string
+  invitedBy: string,
+  clientOverride?: SupabaseClient | null
 ): Promise<TreeCollaborator | null> {
-  const client = getSupabaseBrowserClient();
+  const client = resolveClient(clientOverride);
   if (!client) return null;
 
   // Check if user with this email already exists in profiles
@@ -389,9 +688,10 @@ export async function inviteCollaboratorToSupabase(
  */
 export async function updateCollaboratorRoleInSupabase(
   collaboratorId: string,
-  role: CollaboratorRole
+  role: CollaboratorRole,
+  clientOverride?: SupabaseClient | null
 ): Promise<boolean> {
-  const client = getSupabaseBrowserClient();
+  const client = resolveClient(clientOverride);
   if (!client) return false;
 
   const { error } = await client
@@ -410,8 +710,11 @@ export async function updateCollaboratorRoleInSupabase(
 /**
  * Removes a collaborator from a tree in Supabase.
  */
-export async function removeCollaboratorFromSupabase(collaboratorId: string): Promise<boolean> {
-  const client = getSupabaseBrowserClient();
+export async function removeCollaboratorFromSupabase(
+  collaboratorId: string,
+  clientOverride?: SupabaseClient | null
+): Promise<boolean> {
+  const client = resolveClient(clientOverride);
   if (!client) return false;
 
   const { error } = await client

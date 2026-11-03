@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { VaultAttachment } from '@/types/tree';
 import { SEED_AUDIO_DATA_URL } from '@/data/fixtures/smith-family';
+import { uploadVaultAsset, assertNotBlobUrl } from '@/lib/supabase/storage';
 import { v4 as uuidv4 } from 'uuid';
 
 export const PREFERRED_AUDIO_MIME_TYPES = [
@@ -108,34 +109,29 @@ export default function AudioRecorder({
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const resolvedMimeType =
           mediaRecorder.mimeType || supportedMimeType || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: resolvedMimeType });
 
+        // Stop all tracks to turn off mic indicator
+        stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+
         if (audioBlob.size > 0) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64Url =
-              typeof reader.result === 'string' && reader.result.startsWith('data:audio/')
-                ? reader.result
-                : SEED_AUDIO_DATA_URL;
-            setAudioUrl(base64Url);
-            setRecordingState('recorded');
-          };
-          reader.onerror = () => {
-            setAudioUrl(SEED_AUDIO_DATA_URL);
-            setRecordingState('recorded');
-          };
-          reader.readAsDataURL(audioBlob);
+          const uploaded = await uploadVaultAsset({
+            bucket: 'vault-audio',
+            file: audioBlob,
+            fileName: `voice-memory-${Date.now()}.webm`,
+            contentType: resolvedMimeType,
+            fallbackDataUrl: SEED_AUDIO_DATA_URL,
+          });
+          setAudioUrl(uploaded.url);
+          setRecordingState('recorded');
         } else {
           setAudioUrl(SEED_AUDIO_DATA_URL);
           setRecordingState('recorded');
         }
-
-        // Stop all tracks to turn off mic indicator
-        stream.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
       };
 
       mediaRecorder.start(200);
@@ -175,31 +171,33 @@ export default function AudioRecorder({
     }
   };
 
-  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        const dataUrl = reader.result;
-        setAudioUrl(dataUrl);
-        if (!title.trim() || title === `Voice Memory of ${personName}`) {
-          setTitle(file.name.replace(/\.[^/.]+$/, ''));
-        }
-        const tempAudio = new Audio(dataUrl);
-        tempAudio.onloadedmetadata = () => {
-          if (Number.isFinite(tempAudio.duration) && tempAudio.duration > 0) {
-            setTimerSeconds(Math.max(1, Math.round(tempAudio.duration)));
-          } else {
-            setTimerSeconds(4);
-          }
-        };
-        setTimerSeconds((prev) => (prev > 0 ? prev : 4));
-        setRecordingState('recorded');
+    const uploaded = await uploadVaultAsset({
+      bucket: 'vault-audio',
+      file,
+      fileName: file.name,
+      contentType: file.type || 'audio/mpeg',
+      fallbackDataUrl: SEED_AUDIO_DATA_URL,
+    });
+
+    const resolvedUrl = assertNotBlobUrl(uploaded.url);
+    setAudioUrl(resolvedUrl);
+    if (!title.trim() || title === `Voice Memory of ${personName}`) {
+      setTitle(file.name.replace(/\.[^/.]+$/, ''));
+    }
+    const tempAudio = new Audio(resolvedUrl);
+    tempAudio.onloadedmetadata = () => {
+      if (Number.isFinite(tempAudio.duration) && tempAudio.duration > 0) {
+        setTimerSeconds(Math.max(1, Math.round(tempAudio.duration)));
+      } else {
+        setTimerSeconds(4);
       }
     };
-    reader.readAsDataURL(file);
+    setTimerSeconds((prev) => (prev > 0 ? prev : 4));
+    setRecordingState('recorded');
   };
 
   const resetRecording = () => {

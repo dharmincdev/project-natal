@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTier } from '@/context/TierContext';
 import ThemeToggle from '@/components/shared/ThemeToggle';
+import UserNav from '@/components/shared/UserNav';
 
 type SharedTreeClientProps = {
   initialTreeData: TreeData;
@@ -225,7 +226,8 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
           </Link>
 
           <div className="h-4 w-px bg-border hidden sm:block" />
-          <div className="hidden sm:block">
+          <div className="hidden sm:flex items-center gap-1.5">
+            <UserNav />
             <ThemeToggle />
           </div>
         </div>

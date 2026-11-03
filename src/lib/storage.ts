@@ -6,7 +6,7 @@ import { getInitialSmithTreeData } from '@/data/fixtures/smith-family';
 import { getInitialRiveraChenTreeData } from '@/data/fixtures/rivera-chen';
 import { getInitialHouseTargaryenTreeData } from '@/data/fixtures/house-targaryen';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { saveTreeDataToSupabase } from '@/lib/supabase/db';
+import { saveTreeDataToSupabase, importGedcomTreeToSupabase } from '@/lib/supabase/db';
 
 const CUSTOM_TREES_KEY = 'project_natal_custom_trees_v1';
 const TREE_DATA_PREFIX = 'project_natal_tree_data_v1_';
@@ -355,6 +355,21 @@ export function importGedcomTree(importedData: TreeData): TreeData {
   if (!isClient()) return importedData;
 
   saveTreeData(importedData);
+
+  const client = getSupabaseBrowserClient();
+  if (client) {
+    client.auth
+      .getUser()
+      .then(({ data: { user } }) => {
+        if (user) {
+          importGedcomTreeToSupabase(importedData, user.id).catch((err) => {
+            console.error('Atomic GEDCOM RPC sync failed:', err);
+          });
+        }
+      })
+      .catch(() => {});
+  }
+
   return importedData;
 }
 

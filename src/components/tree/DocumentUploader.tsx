@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { VaultAttachment, VaultAttachmentType } from '@/types/tree';
+import { uploadVaultAsset, assertNotBlobUrl } from '@/lib/supabase/storage';
 import { v4 as uuidv4 } from 'uuid';
 
 type DocumentUploaderProps = {
@@ -38,11 +39,11 @@ export default function DocumentUploader({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleFileSelected = (selectedFile: File) => {
+  const handleFileSelected = async (selectedFile: File) => {
     setErrorMsg(null);
-    // Limit to 5MB for base64 storage
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      setErrorMsg('File size must be under 5 MB.');
+    // Limit to 25MB for Supabase Storage / 5MB for Base64 fallback
+    if (selectedFile.size > 25 * 1024 * 1024) {
+      setErrorMsg('File size must be under 25 MB.');
       return;
     }
 
@@ -63,12 +64,13 @@ export default function DocumentUploader({
       setDocType('document');
     }
 
-    // Read as Data URL
-    const reader = new FileReader();
-    reader.onload = () => {
-      setDataUrl(reader.result as string);
-    };
-    reader.readAsDataURL(selectedFile);
+    const uploaded = await uploadVaultAsset({
+      bucket: 'vault-docs',
+      file: selectedFile,
+      fileName: selectedFile.name,
+      contentType: selectedFile.type,
+    });
+    setDataUrl(assertNotBlobUrl(uploaded.url));
   };
 
   const handleDrop = (e: React.DragEvent) => {

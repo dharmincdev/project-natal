@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Check, Sparkles, Plus, Home, TreePine, FileSpreadsheet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { getAllTreeSummaries, TreeSummary } from '@/lib/storage';
+import { getAllTreeSummaries, TreeSummary, SAMPLE_TREES } from '@/lib/storage';
 
 type TreeSwitcherProps = {
   currentSlug: string;
@@ -31,17 +31,18 @@ export default function TreeSwitcher({
   }, [isOpen, allTrees.length]);
 
   const currentTree = useMemo(() => {
+    const sampleFallback = SAMPLE_TREES.find((t) => t.slug === currentSlug);
     return (
       allTrees.find((t) => t.slug === currentSlug || t.id === currentSlug) ||
       allTrees[0] || {
         id: currentSlug,
         slug: currentSlug,
-        name: 'Family Tree',
-        emoji: '🌳',
-        tag: 'Tree',
+        name: sampleFallback?.name || 'The Smith Family',
+        emoji: sampleFallback?.emoji || '🌳',
+        tag: sampleFallback?.tag || 'Tree',
         memberCount: 0,
         connectionCount: 0,
-        description: null,
+        description: sampleFallback?.description || null,
         isCustom: false,
         updatedAt: '',
       }
@@ -79,9 +80,8 @@ export default function TreeSwitcher({
           {currentTree.name}
         </span>
         <ChevronDown
-          className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
+          className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
+            }`}
         />
       </button>
 
@@ -112,11 +112,10 @@ export default function TreeSwitcher({
                         key={tree.id}
                         type="button"
                         onClick={() => handleSelect(tree.slug)}
-                        className={`w-full text-left p-2 rounded-lg transition-all flex items-start gap-2.5 ${
-                          isSelected
+                        className={`w-full text-left p-2 rounded-lg transition-all flex items-start gap-2.5 ${isSelected
                             ? 'bg-primary/10 text-primary font-medium ring-1 ring-primary/20'
                             : 'hover:bg-muted/60 text-foreground'
-                        }`}
+                          }`}
                       >
                         <span className="text-xl shrink-0 mt-0.5">{tree.emoji}</span>
                         <div className="flex-1 min-w-0">
@@ -157,11 +156,10 @@ export default function TreeSwitcher({
                       key={sample.slug}
                       type="button"
                       onClick={() => handleSelect(sample.slug)}
-                      className={`w-full text-left p-2 rounded-lg transition-all flex items-start gap-2.5 ${
-                        isSelected
+                      className={`w-full text-left p-2 rounded-lg transition-all flex items-start gap-2.5 ${isSelected
                           ? 'bg-primary/10 text-primary font-medium ring-1 ring-primary/20'
                           : 'hover:bg-muted/60 text-foreground'
-                      }`}
+                        }`}
                     >
                       <span className="text-xl shrink-0 mt-0.5">{sample.emoji}</span>
                       <div className="flex-1 min-w-0">

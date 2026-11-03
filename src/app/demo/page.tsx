@@ -14,6 +14,8 @@ import { NewPersonRelationshipData } from '@/components/tree/AddPersonDialog';
 import { getTreeData, saveTreeData, resetStoredTree, getStoredCollaborators } from '@/lib/storage';
 import { validateRelationship } from '@/lib/tree-utils';
 import { useTier } from '@/context/TierContext';
+import { useAuth } from '@/context/AuthContext';
+import { useTreeRealtime, applyRealtimeTreeEvent } from '@/lib/supabase/realtime';
 import { AlertCircle, X } from 'lucide-react';
 
 function DemoPageContent() {
@@ -22,6 +24,7 @@ function DemoPageContent() {
   const treeParam = searchParams.get('tree') || 'smith-family';
 
   const { tier, limits, canAddPerson, openUpgradeModal } = useTier();
+  const { user, profile } = useAuth();
   const [currentTreeSlug, setCurrentTreeSlug] = useState<string>(treeParam);
   const [viewMode, setViewMode] = useState<ViewMode>('flat');
   const [treeData, setTreeData] = useState<TreeData>(() => getTreeData(treeParam));
@@ -47,6 +50,21 @@ function DemoPageContent() {
     relationRole?: 'child_of' | 'parent_of' | 'spouse_of' | 'sibling_of';
   }>({});
   const [graphAlert, setGraphAlert] = useState<string | null>(null);
+
+  const { activePeers, isConnected: isRealtimeConnected, broadcastTreeEvent } = useTreeRealtime({
+    treeId: treeData.tree.id || currentTreeSlug,
+    currentUser: user
+      ? {
+          id: user.id,
+          name: profile?.name || user.email?.split('@')[0] || 'Member',
+          email: user.email,
+        }
+      : null,
+    selectedPersonId: selectedPerson?.id ?? null,
+    onRemoteTreeEvent: (event) => {
+      setTreeData((prev) => applyRealtimeTreeEvent(prev, event));
+    },
+  });
   
   const isInitialMount = useRef(true);
 
@@ -357,7 +375,24 @@ function DemoPageContent() {
       saveTreeData(next);
       return next;
     });
-  }, []);
+    broadcastTreeEvent({
+      type: 'node_move',
+      personId,
+      position,
+    });
+  }, [broadcastTreeEvent]);
+
+  const handleManualSync = useCallback(() => {
+    setSaveStatus('saving');
+    saveTreeData(treeData);
+    broadcastTreeEvent({
+      type: 'tree_sync',
+      treeData,
+    });
+    setTimeout(() => {
+      setSaveStatus('saved');
+    }, 250);
+  }, [treeData, broadcastTreeEvent]);
 
   const handleResetLayout = useCallback(() => {
     setTreeData(prev => {
@@ -414,6 +449,9 @@ function DemoPageContent() {
         viewMode={viewMode}
         onSelectMode={setViewMode}
         collaboratorCount={collaboratorCount}
+        activePeers={activePeers}
+        isRealtimeConnected={isRealtimeConnected}
+        onManualSync={handleManualSync}
         onSelectTree={handleSelectTree}
         onOpenCreateTree={() => setIsCreateTreeOpen(true)}
         onOpenImportGedcom={() => setIsImportGedcomOpen(true)}

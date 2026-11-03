@@ -13,13 +13,13 @@ import { TreeCollaborator, CollaboratorRole, FamilyTree } from '@/types/tree';
 import { canManageCollaborators } from '@/lib/permissions';
 import { 
   getStoredCollaborators, 
+  saveStoredCollaborators,
   addStoredCollaborator, 
   updateStoredCollaboratorRole, 
   removeStoredCollaborator 
 } from '@/lib/storage';
 import { 
   fetchTreeCollaboratorsFromSupabase, 
-  inviteCollaboratorToSupabase, 
   updateCollaboratorRoleInSupabase, 
   removeCollaboratorFromSupabase 
 } from '@/lib/supabase/db';
@@ -108,18 +108,45 @@ export default function CollaboratorsModal({
 
     setIsLoading(true);
     try {
-      if (isSupabaseConfigured() && user) {
-        const newCollab = await inviteCollaboratorToSupabase(
-          tree.id,
-          email,
-          selectedRole,
-          user.id
-        );
-        if (newCollab) {
-          setCollaborators((prev) => [...prev, newCollab]);
+      const inviterName =
+        profile?.name ||
+        ((user?.user_metadata as Record<string, unknown> | undefined)?.full_name as
+          | string
+          | undefined) ||
+        'Tree Owner';
+
+      let createdCollab: TreeCollaborator | null = null;
+
+      try {
+        const res = await fetch('/api/collaborators/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            treeId: tree.id,
+            treeSlug: tree.slug,
+            treeName: tree.name,
+            email,
+            role: selectedRole,
+            invitedBy: user?.id || 'demo-user',
+            invitedByName: inviterName,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.collaborator) {
+            createdCollab = data.collaborator as TreeCollaborator;
+          }
         }
+      } catch {
+        // Offline fallback below
+      }
+
+      if (createdCollab) {
+        const updatedList = [...collaborators, createdCollab];
+        saveStoredCollaborators(tree.slug || tree.id, updatedList);
+        setCollaborators(updatedList);
       } else {
-        // Local mode
         const newCollab = addStoredCollaborator(tree.slug || tree.id, {
           treeId: tree.id,
           userId: null,
@@ -127,7 +154,7 @@ export default function CollaboratorsModal({
           role: selectedRole,
           status: 'pending',
           invitedBy: user?.id || 'demo-user',
-          invitedByName: profile?.name || (user?.user_metadata as Record<string, unknown> | undefined)?.full_name as string | undefined || 'Tree Owner',
+          invitedByName: inviterName,
         });
         setCollaborators((prev) => [...prev, newCollab]);
       }

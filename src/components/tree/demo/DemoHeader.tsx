@@ -7,6 +7,8 @@ import ViewModeSwitcher, { ViewMode } from '@/components/tree/ViewModeSwitcher';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTier } from '@/context/TierContext';
+import { useAuth } from '@/context/AuthContext';
+import { PresencePeer } from '@/lib/supabase/realtime';
 import ThemeToggle from '@/components/shared/ThemeToggle';
 import UserNav from '@/components/shared/UserNav';
 import { QA_TEST_CASES } from '@/data/qa-test-cases';
@@ -23,6 +25,9 @@ import {
   Search,
   Download,
   Check,
+  Cloud,
+  RefreshCw,
+  Radio,
   FileSpreadsheet,
   MoreHorizontal,
   ClipboardCheck,
@@ -42,6 +47,9 @@ type DemoHeaderProps = {
   viewMode: ViewMode;
   onSelectMode: (mode: ViewMode) => void;
   collaboratorCount: number;
+  activePeers?: PresencePeer[];
+  isRealtimeConnected?: boolean;
+  onManualSync?: () => void;
   onSelectTree: (slug: string) => void;
   onOpenCreateTree: () => void;
   onOpenImportGedcom: () => void;
@@ -62,6 +70,9 @@ export default function DemoHeader({
   viewMode,
   onSelectMode,
   collaboratorCount,
+  activePeers = [],
+  isRealtimeConnected = true,
+  onManualSync,
   onSelectTree,
   onOpenCreateTree,
   onOpenImportGedcom,
@@ -75,6 +86,7 @@ export default function DemoHeader({
   onResetToSample,
 }: DemoHeaderProps) {
   const { tier, limits, hasFeature, openUpgradeModal } = useTier();
+  const { user, isConfigured } = useAuth();
   const memberCount = treeData.people.length;
   const isAtCapacity = limits.maxPeople !== Infinity && memberCount >= limits.maxPeople;
 
@@ -83,7 +95,7 @@ export default function DemoHeader({
       data-testid="demo-header"
       className="min-h-14 px-2 sm:px-3.5 py-2 border-b border-border flex justify-between items-center bg-card/95 backdrop-blur-md shrink-0 gap-1.5 sm:gap-2 select-none relative z-30"
     >
-      {/* Zone 1: Context & Tree Switcher */}
+      {/* Zone 1: Context & Tree Switcher + Inspectable Cloud Sync Status Badge */}
       <div data-testid="header-zone-1" className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
         <Link
           href="/dashboard"
@@ -103,22 +115,91 @@ export default function DemoHeader({
           onOpenImportGedcom={onOpenImportGedcom}
         />
 
-        {/* Live Auto-Save Status Indicator */}
-        {saveStatus === 'saving' && (
-          <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium shrink-0 animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            <span>Saving...</span>
-          </span>
-        )}
-        {saveStatus === 'saved' && (
-          <span
-            className="hidden md:inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0"
-            title="All changes saved"
+        {/* Inspectable Cloud Sync & Realtime Presence Popover Badge (PRO-22, PRO-30) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            data-testid="cloud-sync-badge"
+            className="hidden md:inline-flex items-center gap-1.5 px-2 py-1 rounded-full border border-border/80 bg-muted/40 hover:bg-muted text-[11px] font-medium transition-colors cursor-pointer shrink-0"
+            title="Inspect Cloud Sync & Realtime Collaboration Status"
           >
-            <Check className="w-3 h-3 text-emerald-500" />
-            <span>Saved</span>
-          </span>
-        )}
+            {saveStatus === 'saving' ? (
+              <>
+                <RefreshCw className="w-3 h-3 text-amber-500 animate-spin" />
+                <span className="text-amber-600 dark:text-amber-400">Saving...</span>
+              </>
+            ) : saveStatus === 'saved' ? (
+              <>
+                <Check className="w-3 h-3 text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400">Saved</span>
+              </>
+            ) : user ? (
+              <>
+                <Cloud className="w-3 h-3 text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400">Cloud Synced</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-3 h-3 text-emerald-500" />
+                <span className="text-muted-foreground">Synced</span>
+              </>
+            )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="w-72 p-3 space-y-2.5"
+            data-testid="cloud-sync-inspector"
+          >
+            <div className="flex items-center justify-between border-b pb-2">
+              <div className="flex items-center gap-1.5">
+                <Cloud className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold">Persistence & Cloud Sync</span>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+              >
+                {saveStatus === 'saving' ? 'Syncing' : 'Active'}
+              </Badge>
+            </div>
+
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Storage Engine:</span>
+                <span className="font-semibold text-foreground">
+                  {user
+                    ? isConfigured
+                      ? 'Supabase PostgreSQL + RLS'
+                      : 'Cloud Sandbox + Local Cache'
+                    : 'Offline-First LocalStorage'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Realtime Channel:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <Radio className="w-3 h-3" />
+                  {isRealtimeConnected ? `Live (${Math.max(1, activePeers.length)} online)` : 'Standby'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Relatives Synced:</span>
+                <span className="font-mono font-semibold">{memberCount} nodes</span>
+              </div>
+            </div>
+
+            {onManualSync && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onManualSync}
+                className="w-full h-7 text-[11px] gap-1.5 font-semibold"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Sync Tree Now</span>
+              </Button>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Zone 2: View Modes & Search */}
