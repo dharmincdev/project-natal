@@ -8,10 +8,11 @@ import {
   MiniMap, 
   Node, 
   Edge,
+  NodeChange,
   useNodesState,
   useEdgesState,
   Connection,
-  addEdge,
+  ConnectionMode,
   ReactFlowInstance,
   OnNodeDrag,
   StraightEdge,
@@ -58,6 +59,8 @@ type TreeCanvasProps = {
     subtype: RelationshipSubtype;
   }) => void;
   onRelationshipError?: (error: string) => void;
+  onNodePositionChange?: (personId: string, position: { x: number; y: number }) => void;
+  onResetLayout?: () => void;
   highlightedPersonId?: string | null;
   isEditable: boolean;
 };
@@ -69,6 +72,8 @@ export default function TreeCanvas({
   onOpenAddRelationship,
   onConnectRelationship,
   onRelationshipError,
+  onNodePositionChange,
+  onResetLayout,
   highlightedPersonId,
   isEditable 
 }: TreeCanvasProps) {
@@ -182,30 +187,96 @@ export default function TreeCanvas({
     }
   }, [highlightedPersonId, rfInstance, nodes]);
 
-  // Handle node drag end to remember position
+  // Clear local custom positions when switching to a different tree
+  useEffect(() => {
+    setCustomPositions({});
+  }, [treeData.tree.id]);
+
+  // Handle node drag end to remember and persist position
   const onNodeDragStop: OnNodeDrag = useCallback((_, node) => {
     if (node.type === 'union') return;
+    const pos = {
+      x: Math.round(node.position.x),
+      y: Math.round(node.position.y),
+    };
     setCustomPositions(prev => ({
       ...prev,
-      [node.id]: { x: node.position.x, y: node.position.y },
+      [node.id]: pos,
     }));
-  }, []);
+    onNodePositionChange?.(node.id, pos);
+  }, [onNodePositionChange]);
 
-  // Handle connecting handles directly on canvas
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<Node>[]) => {
+      onNodesChange(changes);
+      for (const change of changes) {
+        if (
+          change.type === 'position' &&
+          change.dragging === false &&
+          change.position &&
+          !change.id.startsWith('union-')
+        ) {
+          const pos = {
+            x: Math.round(change.position.x),
+            y: Math.round(change.position.y),
+          };
+          setCustomPositions(prev => ({
+            ...prev,
+            [change.id]: pos,
+          }));
+          onNodePositionChange?.(change.id, pos);
+        }
+      }
+    },
+    [onNodesChange, onNodePositionChange]
+  );
+
+  // Handle connecting handles directly on canvas (bidirectional & loose mode)
   const handleConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return;
+    if (connection.source === connection.target) return;
+
+    const isTopHandle = (h?: string | null) =>
+      h === 'top' || h === 'top-target' || h === 'top-source';
+    const isBottomHandle = (h?: string | null) =>
+      h === 'bottom' || h === 'bottom-source' || h === 'bottom-target';
+    const isSideHandle = (h?: string | null) =>
+      h === 'left' ||
+      h === 'right' ||
+      h === 'left-source' ||
+      h === 'left-target' ||
+      h === 'right-source' ||
+      h === 'right-target' ||
+      h === 'spouse-source' ||
+      h === 'spouse-target';
 
     let relType: RelationshipType = 'parent_child';
-    if (
-      connection.sourceHandle === 'spouse-source' || 
-      connection.targetHandle === 'spouse-target'
-    ) {
+    let personAId = connection.source;
+    let personBId = connection.target;
+
+    if (isSideHandle(connection.sourceHandle) || isSideHandle(connection.targetHandle)) {
       relType = 'spouse';
+      personAId = connection.source;
+      personBId = connection.target;
+    } else if (isTopHandle(connection.sourceHandle) && isBottomHandle(connection.targetHandle)) {
+      // Dragged from child's top handle to parent's bottom handle -> target is parent of source
+      relType = 'parent_child';
+      personAId = connection.target;
+      personBId = connection.source;
+    } else if (isBottomHandle(connection.sourceHandle) && isTopHandle(connection.targetHandle)) {
+      // Dragged from parent's bottom handle to child's top handle -> source is parent of target
+      relType = 'parent_child';
+      personAId = connection.source;
+      personBId = connection.target;
+    } else if (isTopHandle(connection.sourceHandle) && !isTopHandle(connection.targetHandle)) {
+      relType = 'parent_child';
+      personAId = connection.target;
+      personBId = connection.source;
     }
 
     const candidateRel = {
-      personAId: connection.source,
-      personBId: connection.target,
+      personAId,
+      personBId,
       type: relType,
       subtype: 'biological' as const,
     };
@@ -223,6 +294,7 @@ export default function TreeCanvas({
 
   const handleResetLayout = () => {
     setCustomPositions({});
+    onResetLayout?.();
     setTimeout(() => {
       rfInstance?.fitView({ padding: 0.25, duration: 400 });
     }, 100);
@@ -233,10 +305,11 @@ export default function TreeCanvas({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={isEditable ? handleConnect : undefined}
+        connectionMode={ConnectionMode.Loose}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultViewport={{ x: 300, y: 120, zoom: 0.8 }}

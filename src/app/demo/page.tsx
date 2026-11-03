@@ -355,6 +355,51 @@ function DemoPageContent() {
     }));
   };
 
+  const handleNodePositionChange = useCallback((personId: string, position: { x: number; y: number }) => {
+    setTreeData(prev => {
+      const next: TreeData = {
+        ...prev,
+        people: prev.people.map(p =>
+          p.id === personId
+            ? {
+                ...p,
+                positionX: position.x,
+                positionY: position.y,
+                customFields: {
+                  ...p.customFields,
+                  _manualPos: 'true',
+                },
+                updatedAt: new Date().toISOString(),
+              }
+            : p
+        ),
+      };
+      saveTreeData(next);
+      return next;
+    });
+  }, []);
+
+  const handleResetLayout = useCallback(() => {
+    setTreeData(prev => {
+      const next: TreeData = {
+        ...prev,
+        people: prev.people.map(p => {
+          const nextCustomFields = { ...p.customFields };
+          delete nextCustomFields._manualPos;
+          return {
+            ...p,
+            positionX: undefined as unknown as number,
+            positionY: undefined as unknown as number,
+            customFields: nextCustomFields,
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      };
+      saveTreeData(next);
+      return next;
+    });
+  }, []);
+
   const handleSelectTree = (slug: string) => {
     setCurrentTreeSlug(slug);
     setSelectedPerson(null);
@@ -429,6 +474,8 @@ function DemoPageContent() {
             onOpenAddRelationship={() => handleOpenAddRelationship()}
             onConnectRelationship={handleAddRelationship}
             onRelationshipError={setGraphAlert}
+            onNodePositionChange={handleNodePositionChange}
+            onResetLayout={handleResetLayout}
             isEditable={true}
             highlightedPersonId={highlightedPersonId}
           />

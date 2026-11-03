@@ -1,10 +1,48 @@
 import { Node, Edge, MarkerType } from '@xyflow/react';
 import { Person, Relationship } from '@/types/tree';
 
+function getManualPosition(
+  person: Person,
+  customPositions?: Record<string, { x: number; y: number }> | Map<string, { x: number; y: number }>
+): { x: number; y: number } | null {
+  if (customPositions) {
+    const fromCustom =
+      customPositions instanceof Map
+        ? customPositions.get(person.id)
+        : customPositions[person.id];
+    if (
+      fromCustom &&
+      typeof fromCustom.x === 'number' &&
+      typeof fromCustom.y === 'number' &&
+      Number.isFinite(fromCustom.x) &&
+      Number.isFinite(fromCustom.y)
+    ) {
+      return { x: fromCustom.x, y: fromCustom.y };
+    }
+  }
+
+  if (
+    typeof person.positionX === 'number' &&
+    typeof person.positionY === 'number' &&
+    Number.isFinite(person.positionX) &&
+    Number.isFinite(person.positionY)
+  ) {
+    if (
+      person.customFields?._manualPos === 'true' ||
+      Math.abs(person.positionX) > 10 ||
+      Math.abs(person.positionY) > 10
+    ) {
+      return { x: person.positionX, y: person.positionY };
+    }
+  }
+
+  return null;
+}
+
 export function layoutFamilyTree(
   people: Person[],
   relationships: Relationship[],
-  customPositions?: Record<string, { x: number; y: number }>
+  customPositions?: Record<string, { x: number; y: number }> | Map<string, { x: number; y: number }>
 ): { nodes: Node[]; edges: Edge[] } {
   // Map childId -> parentIds
   const parentsOf: Record<string, string[]> = {};
@@ -454,9 +492,10 @@ export function layoutFamilyTree(
         let memX = currentX + m * (nodeWidth + spouseGap);
         let memY = currentY;
 
-        if (customPositions && customPositions[memberId]) {
-          memX = customPositions[memberId].x;
-          memY = customPositions[memberId].y;
+        const manualPos = getManualPosition(person, customPositions);
+        if (manualPos) {
+          memX = manualPos.x;
+          memY = manualPos.y;
         }
 
         nodePositions[memberId] = { x: memX, y: memY };
@@ -697,7 +736,13 @@ export function layoutFamilyTree(
           markerEnd: { type: MarkerType.ArrowClosed, color: '#64748b' },
         } as Edge);
       } else {
-        const busY = unionBusY[uKey] ?? (unionCenterY + childPos.y) / 2;
+        const defaultBusY = unionBusY[uKey];
+        const busY =
+          defaultBusY !== undefined &&
+          defaultBusY > unionCenterY + 10 &&
+          defaultBusY < childPos.y - 10
+            ? defaultBusY
+            : (unionCenterY + childPos.y) / 2;
         edges.push({
           id: `edge-union-${uKey}-${childId}`,
           source: unionNodeId,
@@ -744,7 +789,7 @@ export function layoutFamilyTree(
 
         if (hasUnion) {
           const unionNodeId = `union-${uKey}`;
-          // 1. Left Spouse -> unionNodeId (union-left) - Solid Rose
+          // 1. Left Spouse -> unionNodeId (union-left) - Dashed Rose
           edges.push({
             id: `${rel.id}-left`,
             source: leftId,
@@ -752,10 +797,10 @@ export function layoutFamilyTree(
             target: unionNodeId,
             targetHandle: 'union-left',
             type: 'straight',
-            style: { stroke: '#f43f5e', strokeWidth: 2 },
+            style: { stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6,4' },
           });
 
-          // 2. unionNodeId (union-right) -> Right Spouse - Solid Rose
+          // 2. unionNodeId (union-right) -> Right Spouse - Dashed Rose
           edges.push({
             id: `${rel.id}-right`,
             source: unionNodeId,
@@ -763,10 +808,10 @@ export function layoutFamilyTree(
             target: rightId,
             targetHandle: 'spouse-target',
             type: 'straight',
-            style: { stroke: '#f43f5e', strokeWidth: 2 },
+            style: { stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6,4' },
           });
         } else {
-          // Direct spouse edge without children - Solid Rose
+          // Direct spouse edge without children - Dashed Rose
           edges.push({
             id: rel.id,
             source: leftId,
@@ -774,20 +819,20 @@ export function layoutFamilyTree(
             target: rightId,
             targetHandle: 'spouse-target',
             type: 'straight',
-            style: { stroke: '#f43f5e', strokeWidth: 2 },
+            style: { stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6,4' },
           });
         }
       } else {
-        // Cross-row spouse connection (e.g. across generations) - Solid Rose
-        const [upperId, lowerId] = posA.y < posB.y ? [a, b] : [b, a];
+        // Cross-row spouse connection (e.g. across generations) - Dashed Rose
+        const [leftId, rightId] = posA.x <= posB.x ? [a, b] : [b, a];
         edges.push({
           id: rel.id,
-          source: upperId,
+          source: leftId,
           sourceHandle: 'spouse-source',
-          target: lowerId,
+          target: rightId,
           targetHandle: 'spouse-target',
           type: 'default',
-          style: { stroke: '#f43f5e', strokeWidth: 2 },
+          style: { stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '6,4' },
         });
       }
     } else if (rel.type === 'parent_child') {
@@ -830,7 +875,12 @@ export function layoutFamilyTree(
         });
       } else {
         const sourceRowG = Math.round(pParent.y / rowHeight);
-        const busY = sourceRowG * rowHeight + 85 + 35;
+        const defaultBusY = sourceRowG * rowHeight + 85 + 35;
+        const parentBottomY = pParent.y + 90;
+        const busY =
+          defaultBusY > parentBottomY + 10 && defaultBusY < pChild.y - 10
+            ? defaultBusY
+            : (parentBottomY + pChild.y) / 2;
         edges.push({
           id: rel.id,
           source: a, // parent

@@ -62,13 +62,13 @@ export default function PersonNode({ data, isConnectable = true }: PersonNodePro
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Top Handle: For receiving connection from parent */}
+      {/* Top Handle: For parent/child connections */}
       <Handle
         type="target"
         position={Position.Top}
         id="top-target"
         isConnectable={isConnectable}
-        className="w-3 h-3 !bg-slate-400 border-2 !border-white hover:!bg-primary transition-colors"
+        className="!w-3.5 !h-3.5 z-20 cursor-crosshair !bg-slate-400 border-2 !border-white hover:!bg-primary hover:scale-125 transition-transform"
       />
 
       {/* Left Handle: For spouse connections */}
@@ -77,7 +77,7 @@ export default function PersonNode({ data, isConnectable = true }: PersonNodePro
         position={Position.Left}
         id="spouse-target"
         isConnectable={isConnectable}
-        className="w-3 h-3 !bg-rose-400 border-2 !border-white hover:!bg-rose-500 transition-colors"
+        className="!w-3.5 !h-3.5 z-20 cursor-crosshair !bg-rose-400 border-2 !border-white hover:!bg-rose-500 hover:scale-125 transition-transform"
       />
 
       <Avatar className={cn(
@@ -140,7 +140,7 @@ export default function PersonNode({ data, isConnectable = true }: PersonNodePro
       {/* Hover Detail Card - Desktop Only */}
       {isHovered && (
         <div 
-          className="hidden sm:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3.5 bg-popover text-popover-foreground rounded-xl shadow-xl border border-border/80 z-50 pointer-events-none animate-in fade-in-0 zoom-in-95 duration-150 backdrop-blur-md"
+          className="hidden sm:block absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 p-3.5 bg-popover text-popover-foreground rounded-xl shadow-xl border border-border/80 z-50 pointer-events-none animate-in fade-in-0 zoom-in-95 duration-150 backdrop-blur-md"
           style={{ transformOrigin: 'bottom center' }}
         >
           <div className="flex items-start gap-2.5">
@@ -221,16 +221,16 @@ export default function PersonNode({ data, isConnectable = true }: PersonNodePro
         position={Position.Right}
         id="spouse-source"
         isConnectable={isConnectable}
-        className="w-3 h-3 !bg-rose-400 border-2 !border-white hover:!bg-rose-500 transition-colors"
+        className="!w-3.5 !h-3.5 z-20 cursor-crosshair !bg-rose-400 border-2 !border-white hover:!bg-rose-500 hover:scale-125 transition-transform"
       />
 
-      {/* Bottom Handle: For connecting to children */}
+      {/* Bottom Handle: For parent/child connections */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-source"
         isConnectable={isConnectable}
-        className="w-3 h-3 !bg-slate-400 border-2 !border-white hover:!bg-primary transition-colors"
+        className="!w-3.5 !h-3.5 z-20 cursor-crosshair !bg-slate-400 border-2 !border-white hover:!bg-primary hover:scale-125 transition-transform"
       />
     </div>
   );
