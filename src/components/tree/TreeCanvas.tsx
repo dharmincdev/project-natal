@@ -314,14 +314,14 @@ export default function TreeCanvas({
         edgeTypes={edgeTypes}
         defaultViewport={{ x: 300, y: 120, zoom: 0.8 }}
         onInit={(instance) => {
-          setRfInstance(instance);
           setTimeout(() => {
+            setRfInstance(instance);
             try {
               instance.fitView({ padding: 0.25, minZoom: 0.2, maxZoom: 1.2 });
             } catch {
               // Ignore
             }
-          }, 250);
+          }, 50);
         }}
         fitView
         fitViewOptions={{ padding: 0.25, minZoom: 0.2, maxZoom: 1.2 }}

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Check, Sparkles, Plus, Home, TreePine, FileSpreadsheet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { getAllTreeSummaries, TreeSummary, SAMPLE_TREES } from '@/lib/storage';
+import { getAllTreeSummaries, TreeSummary } from '@/lib/storage';
 
 type TreeSwitcherProps = {
   currentSlug: string;
@@ -71,15 +71,15 @@ export default function TreeSwitcher({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-lg border border-border/70 bg-card hover:bg-accent/50 text-foreground text-xs sm:text-sm font-semibold transition-all shadow-2xs hover:shadow-xs shrink-0"
+        className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-2.5 h-7 sm:h-8 rounded-lg border border-border/70 bg-card hover:bg-accent/50 text-foreground text-xs sm:text-sm font-semibold transition-all shadow-2xs hover:shadow-xs shrink-0 cursor-pointer"
         aria-expanded={isOpen}
       >
-        <span className="text-base leading-none shrink-0">{currentTree.emoji}</span>
-        <span className="truncate max-w-[100px] sm:max-w-[125px] xl:max-w-[170px]">
+        <span className="text-sm sm:text-base leading-none shrink-0">{currentTree.emoji}</span>
+        <span className="truncate max-w-[85px] sm:max-w-[130px] xl:max-w-[175px]">
           {currentTree.name}
         </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${
+          className={`w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />

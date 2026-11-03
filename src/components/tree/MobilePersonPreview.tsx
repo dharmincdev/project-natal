@@ -137,16 +137,18 @@ export default function MobilePersonPreview({
         {/* Action Buttons */}
         <div className="mt-3 flex items-center gap-2">
           <Button
+            type="button"
             size="sm"
             onClick={() => onOpenFullProfile(person)}
-            className="flex-1 h-8 text-xs font-medium gap-1.5 shadow-xs"
+            className="flex-1 h-8 text-xs font-semibold gap-1.5 shadow-xs"
           >
             <User className="w-3.5 h-3.5" />
-            <span>{isEditable ? 'View & Edit Profile' : 'View Full Profile'}</span>
+            <span>{isEditable ? 'Full Details & Edit' : 'Full Details'}</span>
           </Button>
 
           {isEditable && onConnect && (
             <Button
+              type="button"
               size="sm"
               variant="outline"
               onClick={() => onConnect(person.id)}

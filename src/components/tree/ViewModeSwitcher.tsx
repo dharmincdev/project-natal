@@ -1,10 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Layers, Globe2, Clock } from 'lucide-react';
-import { useTier } from '@/context/TierContext';
 
-export type ViewMode = 'flat' | '3d' | 'timeline' | 'world';
+export type ViewMode = 'flat' | 'timeline' | 'world';
 
 type ViewModeSwitcherProps = {
   currentMode: ViewMode;
@@ -15,18 +13,22 @@ export default function ViewModeSwitcher({
   currentMode,
   onSelectMode,
 }: ViewModeSwitcherProps) {
-  const { tier, openUpgradeModal } = useTier();
-
   const handleModeClick = (mode: ViewMode) => {
-    // 3D & World modes are available in demo for evaluation
     onSelectMode(mode);
   };
 
   return (
-    <div className="flex items-center rounded-lg border bg-muted/50 p-0.5 text-xs shadow-2xs">
+    <div
+      className="flex items-center rounded-lg border bg-muted/50 p-0.5 text-xs shadow-2xs shrink-0"
+      role="tablist"
+      aria-label="Tree visualization modes"
+    >
       <button
+        type="button"
+        role="tab"
+        aria-selected={currentMode === 'flat'}
         onClick={() => handleModeClick('flat')}
-        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer ${
           currentMode === 'flat'
             ? 'bg-background shadow-xs text-foreground font-semibold'
             : 'text-muted-foreground hover:text-foreground'
@@ -38,34 +40,27 @@ export default function ViewModeSwitcher({
       </button>
 
       <button
-        onClick={() => handleModeClick('3d')}
-        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-          currentMode === '3d'
-            ? 'bg-background shadow-xs text-primary font-semibold'
-            : 'text-muted-foreground hover:text-foreground'
-        }`}
-        title="3D Orbital Constellation View"
-      >
-        <span>🪐</span>
-        <span>3D</span>
-      </button>
-
-      <button
+        type="button"
+        role="tab"
+        aria-selected={currentMode === 'timeline'}
         onClick={() => handleModeClick('timeline')}
-        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer ${
           currentMode === 'timeline'
             ? 'bg-background shadow-xs text-amber-600 dark:text-amber-400 font-semibold'
             : 'text-muted-foreground hover:text-foreground'
         }`}
-        title="Chronological Timeline View"
+        title="Unified Chronological Timeline, Lifespan Tracks & Time Traveler View"
       >
         <span>⏳</span>
         <span>Timeline</span>
       </button>
 
       <button
+        type="button"
+        role="tab"
+        aria-selected={currentMode === 'world'}
         onClick={() => handleModeClick('world')}
-        className={`flex items-center gap-1.5 px-1.5 sm:px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+        className={`flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer ${
           currentMode === 'world'
             ? 'bg-background shadow-xs text-emerald-600 dark:text-emerald-400 font-semibold'
             : 'text-muted-foreground hover:text-foreground'

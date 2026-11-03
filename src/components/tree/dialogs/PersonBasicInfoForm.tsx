@@ -167,49 +167,71 @@ export default function PersonBasicInfoForm({
         </div>
       </div>
 
-      {/* Birth Date & Life Status */}
-      <div className="space-y-2">
+      {/* Life Status & Birth/Death Dates (PRO-10) */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="add-birthDate" className="text-xs font-semibold">Birth Date</Label>
-          <div className="flex items-center gap-2">
-            <label 
-              htmlFor="add-isDeceased" 
-              className="text-xs text-muted-foreground flex items-center gap-1.5 cursor-pointer select-none hover:text-foreground transition-colors"
+          <span className="text-xs font-semibold text-foreground">Life Status</span>
+          <div className="inline-flex items-center rounded-full border border-border bg-muted/50 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeceased(false);
+                setDeathDate('');
+              }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer',
+                !isDeceased
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/40 font-semibold shadow-2xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Living</span>
+            </button>
+            <label
+              htmlFor="add-isDeceased"
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer select-none',
+                isDeceased
+                  ? 'bg-slate-800 text-slate-100 dark:bg-slate-200 dark:text-slate-900 font-semibold shadow-2xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
             >
               <input
                 id="add-isDeceased"
                 type="checkbox"
+                role="switch"
+                aria-checked={isDeceased}
                 checked={isDeceased}
                 onChange={(e) => {
                   setIsDeceased(e.target.checked);
                   if (!e.target.checked) setDeathDate('');
                 }}
-                className="h-3.5 w-3.5 rounded border-input text-primary focus:ring-primary"
+                className="sr-only"
               />
-              <span>Deceased</span>
+              <span>🪦 Deceased</span>
             </label>
-            {!isDeceased && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                Living
-              </span>
-            )}
           </div>
         </div>
 
-        <div className={`grid gap-3 ${isDeceased ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`grid gap-3 items-start ${isDeceased ? 'grid-cols-2' : 'grid-cols-1'}`}>
           <div className="space-y-1.5">
-            <Input 
-              id="add-birthDate" 
-              type="date" 
-              value={birthDate} 
-              onChange={e => setBirthDate(e.target.value)} 
+            <div className="flex items-center justify-between h-4">
+              <Label htmlFor="add-birthDate" className="text-xs font-semibold">
+                Birth Date
+              </Label>
+            </div>
+            <Input
+              id="add-birthDate"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
             />
           </div>
 
           {isDeceased && (
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between h-4">
                 <Label htmlFor="add-deathDate" className="text-xs font-semibold text-muted-foreground">
                   Death Date
                 </Label>
@@ -223,11 +245,11 @@ export default function PersonBasicInfoForm({
                   </button>
                 )}
               </div>
-              <Input 
-                id="add-deathDate" 
-                type="date" 
-                value={deathDate} 
-                onChange={e => setDeathDate(e.target.value)} 
+              <Input
+                id="add-deathDate"
+                type="date"
+                value={deathDate}
+                onChange={(e) => setDeathDate(e.target.value)}
               />
             </div>
           )}

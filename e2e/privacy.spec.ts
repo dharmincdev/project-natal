@@ -12,5 +12,10 @@ test.describe('Public Living Relative Privacy (SPEC.md §6.1)', () => {
 
     // Verify unredacted real names like "Robert Smith" are NOT exposed on public view
     await expect(page.getByText('Robert Smith')).not.toBeVisible();
+
+    // PRO-12: Verify unified semantic theme palette (bg-background text-foreground) on /t/[slug]
+    const shell = page.getByTestId('shared-tree-shell');
+    await expect(shell).toBeVisible();
+    await expect(shell).toHaveClass(/bg-background/);
   });
 });

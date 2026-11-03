@@ -7,8 +7,12 @@ test.describe('Mobile Viewport & Touch Responsive UX (TS-10)', () => {
     await page.goto('/demo');
     await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
 
-    // Assert mobile header elements
+    // Assert mobile header elements and zero horizontal overflow (PRO-9)
     await expect(page.getByText('Smith Family')).toBeVisible();
+    const hasOverflow = await page.evaluate(() => {
+      return document.documentElement.scrollWidth > document.documentElement.clientWidth;
+    });
+    expect(hasOverflow).toBe(false);
 
     // Click on Robert Smith node on canvas
     await page.getByText('Robert Smith').first().click();
@@ -20,15 +24,15 @@ test.describe('Mobile Viewport & Touch Responsive UX (TS-10)', () => {
 
     // Click "Full Details" in mobile drawer to open full PersonDetailPanel
     const fullDetailsBtn = mobileDrawer.getByRole('button', { name: /Full Details/i });
-    if (await fullDetailsBtn.isVisible()) {
-      await fullDetailsBtn.click();
-      await expect(page.getByRole('heading', { name: /Robert Smith/i })).toBeVisible();
-    }
+    await expect(fullDetailsBtn).toBeVisible();
+    await fullDetailsBtn.click();
+    await expect(page.getByRole('heading', { name: /Robert Smith/i })).toBeVisible();
   });
 
   test('should toggle mobile spotlight search modal', async ({ page }) => {
     await page.goto('/demo');
     await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
+    await expect(page.getByText('Smith Family')).toBeVisible();
 
     // Click Search icon button in header
     const searchBtn = page.getByTitle(/Search relatives/i);

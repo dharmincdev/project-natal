@@ -125,8 +125,8 @@ export type TreeCollaborator = {
 
 export const TIER_LIMITS = {
   free: { maxPeople: 25, hasAiChat: false, hasQrCode: false, hasPrint: false, maxCollaborators: 3, visualizationModes: ['flat'] as const },
-  onetime: { maxPeople: 100, hasAiChat: false, hasQrCode: true, hasPrint: true, maxCollaborators: 10, visualizationModes: ['flat', '3d', 'timeline', 'world'] as const },
-  pro: { maxPeople: Infinity, hasAiChat: true, hasQrCode: true, hasPrint: true, maxCollaborators: Infinity, visualizationModes: ['flat', '3d', 'timeline', 'world'] as const },
+  onetime: { maxPeople: 100, hasAiChat: false, hasQrCode: true, hasPrint: true, maxCollaborators: 10, visualizationModes: ['flat', 'timeline', 'world'] as const },
+  pro: { maxPeople: Infinity, hasAiChat: true, hasQrCode: true, hasPrint: true, maxCollaborators: Infinity, visualizationModes: ['flat', 'timeline', 'world'] as const },
 } as const;
 
 export type TierLimits = typeof TIER_LIMITS;

@@ -272,7 +272,7 @@ export default function QAPage() {
                 Project Natal QA Plan
               </h1>
               <p className="text-[11px] text-muted-foreground hidden sm:block">
-                Interactive Manual Testing Checklist • 50 Test Cases
+                Interactive Manual Testing Checklist • {totalCount} Test Cases
               </p>
             </div>
           </div>
@@ -471,7 +471,7 @@ export default function QAPage() {
                   : 'bg-card hover:bg-muted text-muted-foreground hover:text-foreground border-border'
               }`}
             >
-              All Suites (50)
+              All Suites ({totalCount})
             </button>
             {QA_SUITES.map(suite => {
               const suiteCases = QA_TEST_CASES.filter(tc => tc.suiteId === suite.id);

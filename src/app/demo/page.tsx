@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, Suspense } from 'react';
-import dynamic from 'next/dynamic';
 import { v4 as uuidv4 } from 'uuid';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { TreeData, Person, Relationship, RelationshipType, RelationshipSubtype } from '@/types/tree';
 import TreeCanvas from '@/components/tree/TreeCanvas';
 import { ViewMode } from '@/components/tree/ViewModeSwitcher';
 import TreeTimeline from '@/components/tree/TreeTimeline';
+import TreeWorldGlobe from '@/components/tree/TreeWorldGlobe';
 import DemoHeader from '@/components/tree/demo/DemoHeader';
 import DemoModals from '@/components/tree/demo/DemoModals';
 import { NewPersonRelationshipData } from '@/components/tree/AddPersonDialog';
@@ -15,26 +15,6 @@ import { getTreeData, saveTreeData, resetStoredTree, getStoredCollaborators } fr
 import { validateRelationship } from '@/lib/tree-utils';
 import { useTier } from '@/context/TierContext';
 import { AlertCircle, X } from 'lucide-react';
-
-const TreeOrbit3D = dynamic(() => import('@/components/tree/TreeOrbit3D'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-xs font-medium">Entering 3D Orbit...</p>
-    </div>
-  ),
-});
-
-const TreeWorldGlobe = dynamic(() => import('@/components/tree/TreeWorldGlobe'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-xs font-medium">Entering World Globe & Migration...</p>
-    </div>
-  ),
-});
 
 function DemoPageContent() {
   const searchParams = useSearchParams();
@@ -100,8 +80,8 @@ function DemoPageContent() {
   }, [treeData]);
 
   const handlePersonClick = useCallback((person: Person) => {
-    // On mobile touch screens, open sleek quick preview card
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    // On mobile touch screens (< 640px), open sleek quick preview card
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
       setMobilePreviewPerson(person);
     } else {
       setSelectedPerson(person);
@@ -478,12 +458,6 @@ function DemoPageContent() {
             onResetLayout={handleResetLayout}
             isEditable={true}
             highlightedPersonId={highlightedPersonId}
-          />
-        ) : viewMode === '3d' ? (
-          <TreeOrbit3D
-            treeData={treeData}
-            onPersonClick={handlePersonClick}
-            selectedPersonId={highlightedPersonId || selectedPerson?.id}
           />
         ) : viewMode === 'timeline' ? (
           <TreeTimeline

@@ -142,13 +142,13 @@ export default function UpgradeModal() {
         </DialogHeader>
 
         {upgradeReason && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300 text-xs md:text-sm font-medium">
+          <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300 text-xs md:text-sm font-medium mb-1">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{upgradeReason}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-5">
           {tiers.map((t) => {
             const isCurrent = tier === t.id;
             const isHighlighted = highlightedTier === t.id;
@@ -156,7 +156,7 @@ export default function UpgradeModal() {
             return (
               <div
                 key={t.id}
-                className={`relative flex flex-col justify-between rounded-xl p-5 border transition-all ${
+                className={`relative flex flex-col justify-between rounded-xl p-5 pt-6 border transition-all ${
                   isHighlighted
                     ? 'border-violet-600 dark:border-violet-400 ring-2 ring-violet-600/20 shadow-md bg-violet-50/20 dark:bg-violet-950/10'
                     : isCurrent
@@ -165,9 +165,9 @@ export default function UpgradeModal() {
                 }`}
               >
                 {t.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                     <Badge
-                      className={`text-[10px] px-2.5 py-0.5 uppercase tracking-wide font-semibold ${
+                      className={`text-[10px] px-2.5 py-0.5 uppercase tracking-wide font-semibold whitespace-nowrap shadow-2xs ${
                         t.id === 'pro'
                           ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white border-0'
                           : t.id === 'onetime'

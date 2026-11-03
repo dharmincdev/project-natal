@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { TreeData, Person } from '@/types/tree';
 import TreeCanvas from '@/components/tree/TreeCanvas';
@@ -12,39 +11,26 @@ import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
 import MobilePersonPreview from '@/components/tree/MobilePersonPreview';
 import ViewModeSwitcher, { ViewMode } from '@/components/tree/ViewModeSwitcher';
 import TreeTimeline from '@/components/tree/TreeTimeline';
+import TreeWorldGlobe from '@/components/tree/TreeWorldGlobe';
 import SpotlightSearch from '@/components/tree/SpotlightSearch';
-import { QrCode, Copy, Check, Users, Sparkles, Lock, Search } from 'lucide-react';
+import { QrCode, Copy, Check, Users, Sparkles, Lock, Search, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { useTier } from '@/context/TierContext';
 import ThemeToggle from '@/components/shared/ThemeToggle';
-
-const TreeOrbit3D = dynamic(() => import('@/components/tree/TreeOrbit3D'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-xs font-medium">Entering 3D Orbit...</p>
-    </div>
-  ),
-});
-
-const TreeWorldGlobe = dynamic(() => import('@/components/tree/TreeWorldGlobe'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-xs font-medium">Entering World Globe & Migration...</p>
-    </div>
-  ),
-});
 
 type SharedTreeClientProps = {
   initialTreeData: TreeData;
 };
 
 export default function SharedTreeClient({ initialTreeData }: SharedTreeClientProps) {
-  const { tier, hasFeature, openUpgradeModal } = useTier();
+  const { hasFeature, openUpgradeModal } = useTier();
   const [viewMode, setViewMode] = useState<ViewMode>('flat');
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [mobilePreviewPerson, setMobilePreviewPerson] = useState<Person | null>(null);
@@ -57,7 +43,7 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
   const [copied, setCopied] = useState(false);
 
   const handlePersonClick = useCallback((p: Person) => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
       setMobilePreviewPerson(p);
     } else {
       setSelectedPerson(p);
@@ -65,13 +51,16 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
     }
   }, []);
 
-  const handleSelectSpotlightPerson = useCallback((person: Person) => {
-    setHighlightedPersonId(person.id);
-    handlePersonClick(person);
-    setTimeout(() => {
-      setHighlightedPersonId(prev => (prev === person.id ? null : prev));
-    }, 6000);
-  }, [handlePersonClick]);
+  const handleSelectSpotlightPerson = useCallback(
+    (person: Person) => {
+      setHighlightedPersonId(person.id);
+      handlePersonClick(person);
+      setTimeout(() => {
+        setHighlightedPersonId((prev) => (prev === person.id ? null : prev));
+      }, 6000);
+    },
+    [handlePersonClick]
+  );
 
   const memberCount = initialTreeData.people.length;
 
@@ -82,32 +71,42 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] overflow-hidden bg-gray-50 dark:bg-gray-900">
-      <header className="flex-none bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between z-10 gap-2">
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Link href="/" className="font-bold text-base sm:text-xl text-blue-600 dark:text-blue-400 shrink-0">
+    <div
+      data-testid="shared-tree-shell"
+      className="flex flex-col h-[100dvh] overflow-hidden bg-background text-foreground"
+    >
+      <header className="flex-none min-h-14 bg-card/95 backdrop-blur-md border-b border-border px-2 sm:px-5 py-2 flex items-center justify-between z-30 gap-1.5 sm:gap-3 shrink-0">
+        {/* Zone 1: Brand & Tree Identity */}
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink-0">
+          <Link
+            href="/"
+            className="font-bold text-sm sm:text-lg text-primary shrink-0 tracking-tight"
+          >
             Natal
           </Link>
-          <div className="h-5 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
-          <h1 className="text-sm sm:text-lg font-semibold truncate max-w-[140px] sm:max-w-md">
+          <div className="h-4 w-px bg-border hidden sm:block shrink-0" />
+          <h1 className="text-xs sm:text-base font-semibold text-foreground truncate max-w-[95px] sm:max-w-xs">
             🌳 {initialTreeData.tree.name}
           </h1>
-          <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 shrink-0">
+          <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 shrink-0">
             <Users className="w-3 h-3" />
             {memberCount}
           </span>
+        </div>
 
+        {/* Zone 2: View Modes & Search */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <ViewModeSwitcher currentMode={viewMode} onSelectMode={setViewMode} />
 
-          {/* Spotlight Search Button */}
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={() => setIsSpotlightOpen(true)}
-            className="h-8 px-2 sm:px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground bg-background shadow-2xs font-normal shrink-0"
+            className="h-7 w-7 sm:h-8 sm:w-auto px-0 sm:px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground bg-background shadow-2xs font-normal shrink-0"
             title="Search relatives (⌘K)"
           >
-            <Search className="w-3.5 h-3.5 text-primary" />
+            <Search className="w-3.5 h-3.5 text-primary shrink-0" />
             <span className="hidden md:inline">Search</span>
             <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1 py-0.2 rounded border bg-muted text-[10px] font-mono text-muted-foreground font-semibold">
               ⌘K
@@ -115,92 +114,131 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
           </Button>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Zone 3: Share, Collaborators, AI & Theme */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleCopyLink}
-            className="h-8 px-2 sm:px-3 text-xs"
+            className="hidden sm:inline-flex h-8 px-2.5 text-xs"
             title="Copy shareable link"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline ml-1.5">{copied ? 'Copied' : 'Copy'}</span>
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsQrModalOpen(true)}
-            className="h-8 px-2 sm:px-3 text-xs"
-            title="Share & QR Code"
-          >
-            <QrCode className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden sm:inline ml-1.5">QR</span>
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+            <span className="hidden md:inline ml-1.5">{copied ? 'Copied' : 'Copy'}</span>
           </Button>
 
           <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsQrModalOpen(true)}
+            className="hidden sm:inline-flex h-8 px-2.5 text-xs"
+            title="Share & QR Code"
+          >
+            <QrCode className="w-3.5 h-3.5 text-primary" />
+            <span className="hidden md:inline ml-1.5">QR</span>
+          </Button>
+
+          <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={() => setIsCollaboratorsOpen(true)}
-            className="h-8 px-2 sm:px-3 text-xs gap-1"
+            className="hidden sm:inline-flex h-8 px-2.5 text-xs gap-1"
             title="View tree collaborators"
           >
             <Users className="w-3.5 h-3.5 text-primary" />
-            <span className="hidden sm:inline ml-0.5">Collaborators</span>
+            <span className="hidden lg:inline ml-0.5">Collaborators</span>
           </Button>
-          
+
+          {/* Mobile <640px overflow menu */}
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-input bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 cursor-pointer"
+                title="More Actions"
+                aria-label="More Actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
+                  <Copy className="h-4 w-4 mr-2 text-primary" />
+                  <span>{copied ? 'Copied Link!' : 'Copy Share Link'}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsQrModalOpen(true)} className="cursor-pointer">
+                  <QrCode className="h-4 w-4 mr-2 text-primary" />
+                  <span>Share & QR Code</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsCollaboratorsOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Users className="h-4 w-4 mr-2 text-primary" />
+                  <span>Collaborators</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           {hasFeature('aiChat') ? (
             <Button
+              type="button"
               size="sm"
               onClick={() => setIsChatOpen(true)}
-              className="h-8 px-2.5 sm:px-3 text-xs gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-medium shadow-sm"
+              className="h-7 sm:h-8 px-2 sm:px-3 text-xs gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-medium shadow-xs"
             >
-              <Sparkles className="h-3.5 w-3.5 text-amber-300 fill-amber-300" /> 
-              <span className="hidden xs:inline">Ask </span>AI
+              <Sparkles className="h-3.5 w-3.5 text-amber-300 fill-amber-300" />
+              <span className="hidden sm:inline">Ask </span>
+              <span>AI</span>
             </Button>
           ) : (
             <Button
+              type="button"
               size="sm"
               variant="outline"
-              onClick={() => openUpgradeModal('pro', 'The AI Family Historian is an exclusive Pro feature.')}
-              className="h-8 px-2 sm:px-2.5 text-xs gap-1 border-violet-200 hover:border-violet-300 dark:border-violet-800 text-muted-foreground hover:text-foreground bg-violet-50/40 dark:bg-violet-950/20"
+              onClick={() =>
+                openUpgradeModal('pro', 'The AI Family Historian is an exclusive Pro feature.')
+              }
+              className="h-7 sm:h-8 px-1.5 sm:px-2.5 text-xs gap-1 border-violet-200 hover:border-violet-300 dark:border-violet-800 text-muted-foreground hover:text-foreground bg-violet-50/40 dark:bg-violet-950/20"
             >
               <Lock className="h-3.5 w-3.5 text-amber-500" />
               <span>AI</span>
-              <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 text-[9px] px-1 py-0 h-4 uppercase font-bold border-0">
+              <Badge className="hidden sm:inline-flex bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 text-[9px] px-1 py-0 h-4 uppercase font-bold border-0">
                 PRO
               </Badge>
             </Button>
           )}
 
-          <div className="h-5 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
-          
-          <Link href="/demo">
+          <div className="h-4 w-px bg-border hidden sm:block" />
+
+          <Link href="/demo" className="hidden sm:block">
             <Button size="sm" variant="secondary" className="h-8 text-xs px-2.5 sm:px-3">
-              <span className="hidden sm:inline">Create Tree</span>
-              <span className="sm:hidden">Demo</span>
+              <span className="hidden md:inline">Create Tree</span>
+              <span className="md:hidden">Demo</span>
             </Button>
           </Link>
 
-          <div className="h-5 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block" />
-          <ThemeToggle />
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
       <main className="flex-1 relative overflow-hidden">
         {viewMode === 'flat' ? (
-          <TreeCanvas 
-            treeData={initialTreeData} 
-            onPersonClick={handlePersonClick} 
-            isEditable={false} 
-            onAddPerson={() => {}} 
-            highlightedPersonId={highlightedPersonId}
-          />
-        ) : viewMode === '3d' ? (
-          <TreeOrbit3D
+          <TreeCanvas
             treeData={initialTreeData}
             onPersonClick={handlePersonClick}
-            selectedPersonId={highlightedPersonId || selectedPerson?.id}
+            isEditable={false}
+            onAddPerson={() => {}}
+            highlightedPersonId={highlightedPersonId}
           />
         ) : viewMode === 'timeline' ? (
           <TreeTimeline
@@ -219,20 +257,20 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
         )}
       </main>
 
-      <PersonDetailPanel 
-        person={selectedPerson} 
-        treeData={initialTreeData} 
-        isOpen={isPanelOpen} 
-        onClose={() => setIsPanelOpen(false)} 
-        onSave={() => {}} 
-        isEditable={false} 
+      <PersonDetailPanel
+        person={selectedPerson}
+        treeData={initialTreeData}
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        onSave={() => {}}
+        isEditable={false}
       />
 
-      <QrCodeModal 
-        isOpen={isQrModalOpen} 
-        onClose={() => setIsQrModalOpen(false)} 
-        treeName={initialTreeData.tree.name} 
-        slug={initialTreeData.tree.slug} 
+      <QrCodeModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        treeName={initialTreeData.tree.name}
+        slug={initialTreeData.tree.slug}
       />
 
       <CollaboratorsModal

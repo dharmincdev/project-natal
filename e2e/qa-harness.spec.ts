@@ -20,9 +20,17 @@ test.describe('QA Test Harness & Verification Matrix (/qa)', () => {
     await expect(page.getByRole('button', { name: /TS-9: Public Tree Sharing & QR Codes/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /TS-10: Top Navigation & Responsive UX/i })).toBeVisible();
 
-    // Verify deprecated Simulated Voice Memory test case (TC-3.2) is removed while real audio tests remain
+    // Verify deprecated Simulated Voice Memory (TC-3.2), 3D Orbit (TC-4.1), and 2D Map Toggle (TC-4.6) are removed
     await expect(page.getByText(/Simulated Voice Memory/i)).toHaveCount(0);
+    await expect(page.getByText(/3D Orbital Constellation View/i)).toHaveCount(0);
+    await expect(page.getByText(/2D Flat Map Toggle/i)).toHaveCount(0);
     await expect(page.getByText(/Playback of Stored Audio Memories in Vault/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/Unified Family Timeline, Lifespan Tracks & Time Traveler Scrubber/i).first()
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Interactive 3D World Globe & Migration Arcs/i).first()
+    ).toBeVisible();
   });
 
   test('should filter test cases by search query and suite', async ({ page }) => {
