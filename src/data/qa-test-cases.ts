@@ -39,7 +39,7 @@ export const QA_SUITES: QASuite[] = [
     id: 'TS-3',
     title: 'Audio Memories & Document Vault',
     icon: 'Mic',
-    description: 'In-browser voice recording, simulated voice stories, audio playback, and historical certificate/document archiving.',
+    description: 'In-browser voice recording, oral history audio playback, and historical certificate/document archiving.',
     priority: 'P0',
   },
   {
@@ -332,27 +332,6 @@ export const QA_TEST_CASES: QATestCase[] = [
       'Recording halts and transitions to Review Player state.',
       'Calculated duration displays accurately.',
       'User can click Play to preview the recorded audio clip.',
-    ],
-  },
-  {
-    id: 'TC-3.2',
-    suiteId: 'TS-3',
-    suiteTitle: 'Audio Memories & Document Vault',
-    suiteIcon: 'Mic',
-    title: 'Simulated Voice Memory (Headless/No-Mic Mode)',
-    priority: 'P0',
-    targetRoute: '/demo',
-    targetLabel: 'Open /demo',
-    objective: 'Ensure audio memories can be tested on machines without physical microphone access.',
-    steps: [
-      'In the Audio Recorder modal, click "Simulate Voice".',
-      'Wait 2 seconds while synthetic vocal audio is encoded.',
-      'Enter Title: "Robert\'s Childhood on the Lake".',
-      'Click "Save Voice Memory".',
-    ],
-    expected: [
-      'Synthetic voice memory is generated and displayed in the review player.',
-      'Saving adds the new audio recording card to the relative\'s vault list.',
     ],
   },
   {

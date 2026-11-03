@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('QA Test Harness & Verification Matrix (/qa)', () => {
-  test('should load /qa harness with all 10 QA suites and 50 test cases', async ({ page }) => {
+  test('should load /qa harness with all 10 QA suites and active MVP test cases', async ({ page }) => {
     await page.goto('/qa');
 
     // Verify main page heading and subtitle
@@ -19,6 +19,10 @@ test.describe('QA Test Harness & Verification Matrix (/qa)', () => {
     await expect(page.getByRole('button', { name: /TS-8: Collaborative Trees & Real-Time/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /TS-9: Public Tree Sharing & QR Codes/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /TS-10: Top Navigation & Responsive UX/i })).toBeVisible();
+
+    // Verify deprecated Simulated Voice Memory test case (TC-3.2) is removed while real audio tests remain
+    await expect(page.getByText(/Simulated Voice Memory/i)).toHaveCount(0);
+    await expect(page.getByText(/Playback of Stored Audio Memories in Vault/i).first()).toBeVisible();
   });
 
   test('should filter test cases by search query and suite', async ({ page }) => {

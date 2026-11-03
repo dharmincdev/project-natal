@@ -113,10 +113,11 @@ test.describe('Interactive Demo Tree Canvas', () => {
     // Verify recording UI
     await expect(page.getByText(/Record Oral History/i)).toBeVisible();
 
-    // Click Simulate Voice
-    const simulateBtn = page.getByRole('button', { name: /Simulate Voice/i });
-    await expect(simulateBtn).toBeVisible();
-    await simulateBtn.click();
+    // Verify Simulate Voice button is removed (PRO-20) and click Start Recording
+    await expect(page.getByRole('button', { name: /Simulate Voice/i })).toHaveCount(0);
+    const startRecBtn = page.getByRole('button', { name: /Start Recording/i });
+    await expect(startRecBtn).toBeVisible();
+    await startRecBtn.click();
 
     // Stop recording to enter review state deterministically
     const stopBtn = page.getByRole('button', { name: /Stop & Review/i });

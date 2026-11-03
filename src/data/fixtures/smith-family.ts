@@ -1,5 +1,106 @@
 import { Milestone, Person, Relationship, TreeData, VaultAttachment } from '@/types/tree';
 
+/**
+ * Legacy 16-byte (2ms) silent WAV that shipped in initial prototype fixtures.
+ * Used to detect and transparently upgrade stale localStorage seed attachments.
+ */
+export const LEGACY_SILENT_WAV_DATA_URL =
+  'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRAAAACAgICAgICAgICAgICAgICA';
+
+/**
+ * Synthesizes a valid, audible multi-second 16-bit PCM mono WAV data URL
+ * containing a warm 4-chord harmonic progression (C -> F -> G -> C).
+ */
+export function generateWarmHarmonicWavDataUrl(
+  durationSeconds = 4,
+  sampleRate = 8000
+): string {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const numSamples = Math.max(1, Math.floor(durationSeconds * sampleRate));
+  const dataSize = numSamples * blockAlign;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  // RIFF / WAVE header (44 bytes)
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+  view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+
+  // Warm 4-chord progression: C major -> F major -> G major -> C major
+  const chords: number[][] = [
+    [261.63, 329.63, 392.0],
+    [349.23, 440.0, 523.25],
+    [392.0, 493.88, 587.33],
+    [261.63, 329.63, 392.0, 523.25],
+  ];
+
+  const chordDuration = durationSeconds / chords.length;
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const chordIndex = Math.min(chords.length - 1, Math.floor(t / chordDuration));
+    const chord = chords[chordIndex];
+    const localT = t - chordIndex * chordDuration;
+
+    // Smooth per-chord attack/decay envelope + global fade-in/out
+    const attack = Math.min(1, localT / 0.08);
+    const release = Math.min(1, (chordDuration - localT) / 0.12);
+    const globalFade = Math.min(1, t / 0.05, (durationSeconds - t) / 0.15);
+    const envelope = Math.max(0, attack * release * globalFade);
+
+    let signal = 0;
+    for (let c = 0; c < chord.length; c++) {
+      const freq = chord[c];
+      signal += Math.sin(2 * Math.PI * freq * t) * 0.75;
+      signal += Math.sin(2 * Math.PI * (freq * 2) * t) * 0.25;
+    }
+    signal /= chord.length;
+
+    const pcmValue = Math.max(
+      -32767,
+      Math.min(32767, Math.round(signal * envelope * 18000))
+    );
+    view.setInt16(44 + i * 2, pcmValue, true);
+  }
+
+  const bytes = new Uint8Array(buffer);
+  let base64 = '';
+  if (typeof Buffer !== 'undefined') {
+    base64 = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+  } else {
+    const chunkSize = 0x8000;
+    const chunks: string[] = [];
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      chunks.push(String.fromCharCode(...bytes.subarray(i, i + chunkSize)));
+    }
+    base64 = btoa(chunks.join(''));
+  }
+
+  return `data:audio/wav;base64,${base64}`;
+}
+
+export const SEED_AUDIO_DATA_URL: string = generateWarmHarmonicWavDataUrl(4, 8000);
+
 export function loadSmithFamily(treeId: string): { 
   people: Omit<Person, 'id' | 'createdAt' | 'updatedAt'>[], 
   relationships: Omit<Relationship, 'id' | 'createdAt'>[] 
@@ -47,7 +148,7 @@ export function loadSmithFamily(treeId: string): {
           type: 'audio',
           title: "Grandpa Robert's Memories of Chicago (1968)",
           description: "High school oral history interview recorded with granddaughter Emily.",
-          url: "data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRAAAACAgICAgICAgICAgICAgICA",
+          url: SEED_AUDIO_DATA_URL,
           durationSeconds: 42,
           recordedAt: '2019-11-28T16:00:00.000Z',
           uploadedAt: '2019-11-28T16:30:00.000Z',
@@ -193,3 +294,6 @@ export async function seedSmithFamily(store: typeof import('@/lib/store')): Prom
   if (!loaded) throw new Error("Failed to load tree data after seeding");
   return loaded;
 }
+
+export const SMITH_FAMILY_TREE: TreeData = getInitialSmithTreeData();
+

@@ -1,30 +1,38 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { 
-  VaultAttachment, 
-  VaultAttachmentType 
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  VaultAttachment,
+  VaultAttachmentType,
 } from '@/types/tree';
-import { 
-  Mic, 
-  FileUp, 
-  Play, 
-  Pause, 
-  Trash2, 
-  ExternalLink, 
-  FileText, 
-  Award, 
-  Image as ImageIcon, 
-  Volume2, 
-  Archive, 
+import {
+  LEGACY_SILENT_WAV_DATA_URL,
+  SEED_AUDIO_DATA_URL,
+} from '@/data/fixtures/smith-family';
+import {
+  Mic,
+  FileUp,
+  Play,
+  Pause,
+  Trash2,
+  FileText,
+  Award,
+  Image as ImageIcon,
+  Volume2,
+  Archive,
   Download,
-  Calendar,
-  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import AudioRecorder from './AudioRecorder';
 import DocumentUploader from './DocumentUploader';
+
+export function resolvePlayableAudioUrl(url: string): string {
+  if (!url || url.trim() === '' || url === LEGACY_SILENT_WAV_DATA_URL) {
+    return SEED_AUDIO_DATA_URL;
+  }
+  return url;
+}
 
 type PersonVaultSectionProps = {
   personName: string;
@@ -43,35 +51,130 @@ export default function PersonVaultSection({
 }: PersonVaultSectionProps) {
   const [activeMode, setActiveMode] = useState<'none' | 'audio' | 'document'>('none');
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [playbackProgress, setPlaybackProgress] = useState<number>(0);
+  const [loadedDurations, setLoadedDurations] = useState<Record<string, number>>({});
 
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAttachmentIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+    };
+  }, []);
 
   const handleTogglePlay = (att: VaultAttachment) => {
+    // Pause if currently playing this attachment
     if (playingId === att.id) {
       if (currentAudioRef.current) {
         currentAudioRef.current.pause();
       }
       setPlayingId(null);
-    } else {
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-      }
-
-      const audio = new Audio(att.url);
-      currentAudioRef.current = audio;
-      audio.onended = () => setPlayingId(null);
-      audio.onerror = () => {
-        alert('Could not play audio attachment.');
-        setPlayingId(null);
-      };
-      audio.play();
-      setPlayingId(att.id);
+      return;
     }
+
+    // Resume if same attachment was paused mid-stream
+    if (
+      activeAttachmentIdRef.current === att.id &&
+      currentAudioRef.current &&
+      currentAudioRef.current.currentTime > 0 &&
+      !currentAudioRef.current.ended
+    ) {
+      currentAudioRef.current
+        .play()
+        .then(() => {
+          setPlayingId(att.id);
+        })
+        .catch(() => {
+          setPlayingId(null);
+        });
+      return;
+    }
+
+    // Stop any previous audio instance
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+
+    const playableUrl = resolvePlayableAudioUrl(att.url);
+    const audio = new Audio(playableUrl);
+    audio.preload = 'auto';
+    currentAudioRef.current = audio;
+    activeAttachmentIdRef.current = att.id;
+    setCurrentTime(0);
+    setPlaybackProgress(0);
+
+    audio.onloadedmetadata = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setLoadedDurations((prev) => ({
+          ...prev,
+          [att.id]: Math.max(1, Math.round(audio.duration)),
+        }));
+      }
+    };
+
+    audio.ontimeupdate = () => {
+      const cur = audio.currentTime || 0;
+      const total =
+        Number.isFinite(audio.duration) && audio.duration > 0
+          ? audio.duration
+          : att.durationSeconds || 4;
+      setCurrentTime(cur);
+      setPlaybackProgress(Math.min(100, Math.round((cur / total) * 100)));
+    };
+
+    audio.onended = () => {
+      setPlayingId(null);
+      setCurrentTime(0);
+      setPlaybackProgress(0);
+      activeAttachmentIdRef.current = null;
+    };
+
+    let retriedWithFallback = false;
+    audio.onerror = () => {
+      if (!retriedWithFallback && audio.src !== SEED_AUDIO_DATA_URL) {
+        retriedWithFallback = true;
+        audio.src = SEED_AUDIO_DATA_URL;
+        audio
+          .play()
+          .then(() => setPlayingId(att.id))
+          .catch(() => {
+            setPlayingId(null);
+            activeAttachmentIdRef.current = null;
+          });
+        return;
+      }
+      setPlayingId(null);
+      activeAttachmentIdRef.current = null;
+    };
+
+    audio
+      .play()
+      .then(() => {
+        setPlayingId(att.id);
+      })
+      .catch(() => {
+        if (!retriedWithFallback && audio.src !== SEED_AUDIO_DATA_URL) {
+          retriedWithFallback = true;
+          audio.src = SEED_AUDIO_DATA_URL;
+          audio
+            .play()
+            .then(() => setPlayingId(att.id))
+            .catch(() => setPlayingId(null));
+        } else {
+          setPlayingId(null);
+        }
+      });
   };
 
   const handleDownload = (att: VaultAttachment) => {
     const a = document.createElement('a');
-    a.href = att.url;
+    a.href = att.type === 'audio' ? resolvePlayableAudioUrl(att.url) : att.url;
     a.download = att.fileName || `${att.title.toLowerCase().replace(/\s+/g, '_')}`;
     a.target = '_blank';
     document.body.appendChild(a);
@@ -222,8 +325,20 @@ export default function PersonVaultSection({
                     )}
 
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-0.5">
-                      {isAudio && att.durationSeconds && (
-                        <span>Duration: {formatDuration(att.durationSeconds)}</span>
+                      {isAudio && (att.durationSeconds || loadedDurations[att.id]) && (
+                        <span>
+                          Duration: {formatDuration(att.durationSeconds || loadedDurations[att.id])}
+                        </span>
+                      )}
+                      {isPlaying && (
+                        <span className="inline-flex items-center gap-1 text-rose-500 font-medium">
+                          <span className="inline-flex items-end gap-0.5 h-2.5" aria-hidden="true">
+                            <span className="w-0.5 h-1.5 bg-rose-500 animate-pulse rounded-full" />
+                            <span className="w-0.5 h-2.5 bg-rose-500 animate-pulse rounded-full" />
+                            <span className="w-0.5 h-1 bg-rose-500 animate-pulse rounded-full" />
+                          </span>
+                          <span>Playing ({formatDuration(Math.max(1, Math.floor(currentTime)) || 1)})</span>
+                        </span>
                       )}
                       {att.fileName && <span>{att.fileName}</span>}
                       {att.recordedAt && (
@@ -235,6 +350,21 @@ export default function PersonVaultSection({
                         </span>
                       )}
                     </div>
+
+                    {isAudio && isPlaying && (
+                      <div
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={playbackProgress}
+                        className="w-full h-1 bg-muted rounded-full overflow-hidden mt-1.5"
+                      >
+                        <div
+                          className="h-full bg-rose-500 transition-all duration-150"
+                          style={{ width: `${Math.max(8, playbackProgress)}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
