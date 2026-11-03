@@ -363,11 +363,12 @@ export default function DemoHeader({
           <span className="hidden sm:inline">&nbsp;Person</span>
         </Button>
 
-        {/* Ask AI Button */}
+        {/* Ask AI Button (PRO-25) */}
         {hasFeature('aiChat') ? (
           <Button
             type="button"
             size="sm"
+            data-testid="header-ask-ai-btn"
             onClick={onOpenChat}
             className="text-xs h-7 sm:h-8 px-2 sm:px-3 font-medium bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs gap-1 shrink-0"
           >
@@ -380,6 +381,7 @@ export default function DemoHeader({
             type="button"
             size="sm"
             variant="outline"
+            data-testid="header-ai-locked-btn"
             onClick={() =>
               openUpgradeModal('pro', 'The AI Family Historian is an exclusive Pro feature.')
             }

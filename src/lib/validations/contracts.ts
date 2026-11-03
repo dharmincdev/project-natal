@@ -89,6 +89,7 @@ export const stripeCheckoutSchema = z.object({
   targetTier: z.enum(['onetime', 'pro'], {
     error: 'Invalid target tier selected; must be "onetime" or "pro"',
   }),
+  priceType: z.enum(['onetime', 'pro']).optional(),
   userId: z.string().optional(),
   userEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
   successUrl: z.string().url('Invalid success URL').optional(),

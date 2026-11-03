@@ -143,7 +143,14 @@ export function serializeTreeForAI(treeData: TreeData): string {
     if (person.milestones && person.milestones.length > 0) {
       output += `- Milestones:\n`;
       person.milestones.forEach(m => {
-        output += `  * ${m.date}: [${m.type}] ${m.description}\n`;
+        output += `  * ${m.date}: [${m.type}] ${m.description}${m.location ? ` (${m.location})` : ''}\n`;
+      });
+    }
+
+    if (person.attachments && person.attachments.length > 0) {
+      output += `- Oral History & Vault Attachments:\n`;
+      person.attachments.forEach(att => {
+        output += `  * [${att.type}] ${att.title}${att.description ? ` — ${att.description}` : ''}${att.fileName ? ` (${att.fileName})` : ''}\n`;
       });
     }
     

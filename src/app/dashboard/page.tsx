@@ -12,6 +12,7 @@ import ExportTreeModal from '@/components/tree/ExportTreeModal';
 import CollaboratorsModal from '@/components/tree/CollaboratorsModal';
 import ThemeToggle from '@/components/shared/ThemeToggle';
 import UserNav from '@/components/shared/UserNav';
+import { useTier } from '@/context/TierContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,11 +29,14 @@ import {
   Calendar, 
   ArrowRight,
   Search,
-  Network
+  Network,
+  Crown,
+  Zap
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { tier, openUpgradeModal } = useTier();
   const [trees, setTrees] = useState<TreeSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -118,6 +122,18 @@ export default function DashboardPage() {
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create New Tree</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="dashboard-plan-badge"
+            onClick={() => openUpgradeModal(tier === 'free' ? 'onetime' : 'pro')}
+            className="text-xs font-semibold gap-1.5 h-8"
+          >
+            {tier === 'pro' && <Crown className="w-3.5 h-3.5 text-violet-600" />}
+            {tier === 'onetime' && <Zap className="w-3.5 h-3.5 text-blue-600" />}
+            <span className="capitalize">{tier} Plan</span>
           </Button>
           <UserNav />
           <ThemeToggle />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserTier, TIER_LIMITS, TierConfig } from '@/types/tree';
 
 export type TierContextType = {
@@ -35,26 +35,26 @@ export function TierProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setTier = (newTier: UserTier) => {
+  const setTier = useCallback((newTier: UserTier) => {
     setTierState(newTier);
     try {
       localStorage.setItem('project_natal_user_tier', newTier);
     } catch {
       // Ignore
     }
-  };
+  }, []);
 
-  const openUpgradeModal = (targetTier: UserTier = 'pro', reason?: string) => {
+  const openUpgradeModal = useCallback((targetTier: UserTier = 'pro', reason?: string) => {
     setHighlightedTier(targetTier);
     setUpgradeReason(reason || null);
     setIsUpgradeModalOpen(true);
-  };
+  }, []);
 
-  const closeUpgradeModal = () => {
+  const closeUpgradeModal = useCallback(() => {
     setIsUpgradeModalOpen(false);
     setHighlightedTier(null);
     setUpgradeReason(null);
-  };
+  }, []);
 
   const limits = TIER_LIMITS[tier];
 

@@ -5,7 +5,11 @@ import { stripeCheckoutSchema } from '@/lib/validations/contracts';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parseResult = stripeCheckoutSchema.safeParse(body);
+    const normalizedBody = {
+      ...body,
+      targetTier: body?.targetTier ?? body?.priceType,
+    };
+    const parseResult = stripeCheckoutSchema.safeParse(normalizedBody);
     if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Invalid checkout request payload', details: parseResult.error.flatten() },
@@ -14,19 +18,21 @@ export async function POST(req: NextRequest) {
     }
 
     const { targetTier, userId, userEmail, successUrl, cancelUrl } = parseResult.data;
+    const plan = STRIPE_PLANS[targetTier as 'onetime' | 'pro'];
 
     // If Stripe credentials are not yet configured in .env.local, return simulated checkout
     if (!isStripeConfigured()) {
       return NextResponse.json({
         simulated: true,
+        sessionId: `cs_sim_${targetTier}_${Date.now()}`,
         message: 'Stripe keys not configured. Simulating tier upgrade for testing.',
         tier: targetTier,
+        plan,
       });
     }
 
     const stripe = getStripe()!;
-    const plan = STRIPE_PLANS[targetTier as 'onetime' | 'pro'];
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const origin = req.headers.get('origin') || 'http://localhost:3001';
 
     const sessionParams: import('stripe').default.Checkout.SessionCreateParams = {
       payment_method_types: ['card'],
@@ -59,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url, sessionId: session.id, tier: targetTier });
   } catch (err) {
     console.error('Stripe checkout session error:', err);
     const message = err instanceof Error ? err.message : 'Failed to create checkout session';

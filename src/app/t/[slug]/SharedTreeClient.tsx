@@ -191,6 +191,7 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
             <Button
               type="button"
               size="sm"
+              data-testid="header-ask-ai-btn"
               onClick={() => setIsChatOpen(true)}
               className="h-7 sm:h-8 px-2 sm:px-3 text-xs gap-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-medium shadow-xs"
             >
@@ -203,6 +204,7 @@ export default function SharedTreeClient({ initialTreeData }: SharedTreeClientPr
               type="button"
               size="sm"
               variant="outline"
+              data-testid="header-ai-locked-btn"
               onClick={() =>
                 openUpgradeModal('pro', 'The AI Family Historian is an exclusive Pro feature.')
               }

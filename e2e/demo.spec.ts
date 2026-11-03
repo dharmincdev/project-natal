@@ -204,5 +204,50 @@ test.describe('Interactive Demo Tree Canvas', () => {
     // Verify top-right header updates to active user badge showing Alex Smith
     await expect(page.getByTestId('user-session-badge')).toContainText('Alex Smith');
   });
+
+  test('should enforce Pro tier gating for AI Family Historian, execute $5 One-Time and $7/mo Pro checkouts with confirmation step, and answer LCA kinship questions (PRO-24, PRO-25, PRO-26)', async ({ page }) => {
+    await page.goto('/demo');
+    await page.waitForSelector('.react-flow__renderer', { timeout: 15000 });
+
+    // PRO-25: On Free tier, AI button in header shows Lock + PRO badge
+    const lockedAiBtn = page.getByTestId('header-ai-locked-btn');
+    await expect(lockedAiBtn).toBeVisible();
+    await lockedAiBtn.click();
+
+    // UpgradeModal opens with exclusive Pro reason banner
+    await expect(page.getByRole('heading', { name: /Choose Your Plan/i })).toBeVisible();
+    await expect(page.getByTestId('upgrade-reason-banner')).toContainText(
+      /The AI Family Historian is an exclusive Pro feature/i
+    );
+
+    // PRO-24: Test $5 One-Time checkout flow & confirmation step
+    await page.getByTestId('upgrade-tier-btn-onetime').click();
+    await expect(page.getByTestId('checkout-confirmation-step')).toBeVisible();
+    await expect(page.getByTestId('checkout-confirmation-step')).toContainText(/One-Time Plan Activated/i);
+    await expect(page.getByTestId('upgrade-toast-banner')).toBeVisible();
+    await expect(page.getByTestId('capacity-badge')).toContainText('10/100');
+
+    // PRO-25: Even on One-Time tier, AI Family Historian remains strictly gated for Pro
+    await expect(page.getByTestId('header-ai-locked-btn')).toBeVisible();
+
+    // Switch to all plans and upgrade to $7/mo Pro
+    await page.getByTestId('confirm-checkout-view-plans-btn').click();
+    await page.getByTestId('upgrade-tier-btn-pro').click();
+    await expect(page.getByTestId('checkout-confirmation-step')).toContainText(/Pro Plan Activated/i);
+    await expect(page.getByTestId('capacity-badge')).toContainText('10/∞');
+    await page.getByTestId('confirm-checkout-continue-btn').click();
+
+    // PRO-26: Header button is now "Ask AI"; open ChatPanel and ask LCA kinship query
+    const askAiBtn = page.getByTestId('header-ask-ai-btn');
+    await expect(askAiBtn).toBeVisible();
+    await askAiBtn.click();
+
+    await expect(page.getByTestId('ai-chat-panel')).toBeVisible();
+    await page.getByTestId('chat-suggestion-2').click();
+
+    // Verify accurate LCA kinship answer ("Emily Smith is Robert Smith's granddaughter (daughter of James Smith and Linda Smith)")
+    await expect(page.getByTestId('ai-chat-panel')).toContainText(/granddaughter/i);
+    await expect(page.getByTestId('ai-chat-panel')).toContainText(/James Smith and Linda Smith/i);
+  });
 });
 

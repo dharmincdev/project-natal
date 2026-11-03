@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       const targetTier = session.metadata?.targetTier;
       const userId = session.metadata?.userId;
 
-      if (userId && targetTier) {
+      if (userId && (targetTier === 'onetime' || targetTier === 'pro')) {
         // Update user profile tier in Supabase using privileged admin client
         const adminClient = getSupabaseAdminClient();
         if (adminClient) {
@@ -38,6 +38,21 @@ export async function POST(req: NextRequest) {
             '[Stripe Webhook] SUPABASE_SERVICE_ROLE_KEY not configured. Simulated tier upgrade acknowledged.'
           );
         }
+      }
+    } else if (event.type === 'customer.subscription.updated') {
+      const subscription = event.data.object as import('stripe').default.Subscription;
+      const userId = subscription.metadata?.userId;
+      const nextTier =
+        subscription.status === 'canceled' || subscription.status === 'unpaid'
+          ? 'free'
+          : (subscription.metadata?.targetTier as 'pro' | 'onetime' | undefined) || 'pro';
+
+      const adminClient = getSupabaseAdminClient();
+      if (adminClient && userId) {
+        await adminClient
+          .from('profiles')
+          .update({ tier: nextTier, updated_at: new Date().toISOString() })
+          .eq('id', userId);
       }
     } else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as import('stripe').default.Subscription;
